@@ -23,7 +23,7 @@ function KpiCard({ label, value, unit, sub }: { label: string; value: string; un
 
 export default function KpiGrid({ totals, goals, health, sleep }: Props) {
   const consumidas = Math.round(totals.total_calories)
-  const quemadas = health?.active_calories ?? null
+  const quemadas = health?.total_calories ?? null
   const meta = goals?.calories_goal ?? 2000
   const deficit = quemadas != null ? quemadas - consumidas : null
 
@@ -34,18 +34,6 @@ export default function KpiGrid({ totals, goals, health, sleep }: Props) {
   return (
     <section className="px-4 space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <KpiCard
-          label="Consumidas"
-          value={formatNum(consumidas)}
-          unit="kcal"
-          sub={goals ? `meta ${formatNum(meta)} kcal` : undefined}
-        />
-        <KpiCard
-          label="Quemadas"
-          value={quemadas != null ? formatNum(quemadas) : "—"}
-          unit={quemadas != null ? "kcal" : undefined}
-          sub={health ? "calorías activas" : "sin datos Garmin"}
-        />
         <KpiCard
           label="Pasos"
           value={health?.total_steps != null ? formatNum(health.total_steps) : "—"}

@@ -43,14 +43,6 @@ export default function MacroCard({ totals, totalFiber, goals }: Props) {
       color: MACRO_COLORS.grasas,
       unit: "g",
     },
-    {
-      key: "fibra",
-      label: "Fibra",
-      value: totalFiber,
-      goal: 30,
-      color: MACRO_COLORS.fibra,
-      unit: "g",
-    },
   ]
 
   const totalCal = totals.total_calories || 1

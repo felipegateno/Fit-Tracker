@@ -13,7 +13,7 @@ const PRESETS = [
 export default function DateBar() {
   const router = useRouter()
   const params = useSearchParams()
-  const currentDate = params.get("date") || format(new Date(), "yyyy-MM-dd")
+  const currentDate = params.get("date") || format(subDays(new Date(), 1), "yyyy-MM-dd")
   const currentDays = params.get("days") || "0"
 
   function navigate(date: string, days: string) {

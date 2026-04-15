@@ -73,8 +73,8 @@ async function fetchDashboardData(date: string) {
     db
       .from("garmin_activities")
       .select("id, user_id, activity_id, date, activity_type, name, duration_seconds, calories")
-      .gte("date", date.slice(0, 7) + "-01")
-      .lte("date", date.slice(0, 7) + "-31")
+      .gte("date", format(new Date(), "yyyy-MM") + "-01")
+      .lte("date", format(new Date(), "yyyy-MM") + "-31")
       .order("date", { ascending: true }),
   ])
 
@@ -105,7 +105,7 @@ async function fetchDashboardData(date: string) {
     return {
       date: d,
       consumidas: Math.round(nutrByDate[d] ?? 0),
-      quemadas: Math.round((gh as { active_calories?: number } | undefined)?.active_calories ?? 0),
+      quemadas: Math.round((gh as { total_calories?: number } | undefined)?.total_calories ?? 0),
       total_steps: (gh as { total_steps?: number } | undefined)?.total_steps ?? 0,
       step_goal: (gh as { step_goal?: number } | undefined)?.step_goal ?? 9470,
     }
@@ -126,8 +126,8 @@ async function fetchDashboardData(date: string) {
 
 export default async function DashboardPage({ searchParams }: PageProps) {
   const params = await searchParams
-  const date = params.date || today()
-  const month = date.slice(0, 7)
+  const date = params.date || format(subDays(new Date(), 1), "yyyy-MM-dd")
+  const month = format(new Date(), "yyyy-MM")
 
   const data = await fetchDashboardData(date)
 

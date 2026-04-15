@@ -63,7 +63,7 @@ export default function WorkoutCalendar({ activities, month }: Props) {
                 className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs relative ${
                   isToday ? "ring-2 ring-indigo-500" : ""
                 }`}
-                style={primaryColor ? { backgroundColor: primaryColor + "33", borderColor: primaryColor } : { backgroundColor: "#1f2937" }}
+                style={primaryColor ? { backgroundColor: primaryColor + "66" } : { backgroundColor: "#1f2937" }}
                 title={cats.map((c) => CATEGORY_LABEL[c]).join(", ")}
               >
                 <span className={`font-medium ${hasActivity ? "text-white" : "text-gray-600"}`}>
