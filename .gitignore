@@ -4,25 +4,25 @@ Fit-Tracker Garmin/
 Fit-Tracker Nutricion/
 
 # ── Documentación de proyecto ──────────────────────────────
-Fit-Tracker Viz/docs/
-Fit-Tracker Viz/CLAUDE.md
-Fit-Tracker Viz/.claude
+Fit-Tracker-Viz/docs/
+Fit-Tracker-Viz/CLAUDE.md
+Fit-Tracker-Viz/.claude
 
 # ── Archivos de agentes AI dentro del app ─────────────────
-Fit-Tracker Viz/fit-tracker-viz/AGENTS.md
-Fit-Tracker Viz/fit-tracker-viz/CLAUDE.md
-Fit-Tracker Viz/fit-tracker-viz/README.md
-Fit-Tracker Viz/fit-tracker-viz/.gitignore
+Fit-Tracker-Viz/fit-tracker-viz/AGENTS.md
+Fit-Tracker-Viz/fit-tracker-viz/CLAUDE.md
+Fit-Tracker-Viz/fit-tracker-viz/README.md
+Fit-Tracker-Viz/fit-tracker-viz/.gitignore
 
 # ── Assets de plantilla no usados por el dashboard ────────
-Fit-Tracker Viz/fit-tracker-viz/public/
+Fit-Tracker-Viz/fit-tracker-viz/public/
 
 # ── Build artifacts y secretos ────────────────────────────
-Fit-Tracker Viz/fit-tracker-viz/node_modules/
-Fit-Tracker Viz/fit-tracker-viz/.next/
-Fit-Tracker Viz/fit-tracker-viz/.env*
-Fit-Tracker Viz/fit-tracker-viz/.vercel/
-Fit-Tracker Viz/.env
+Fit-Tracker-Viz/fit-tracker-viz/node_modules/
+Fit-Tracker-Viz/fit-tracker-viz/.next/
+Fit-Tracker-Viz/fit-tracker-viz/.env*
+Fit-Tracker-Viz/fit-tracker-viz/.vercel/
+Fit-Tracker-Viz/.env
 
 # ── Caché de herramientas ─────────────────────────────────
-Fit-Tracker Viz/fit-tracker-viz/tsconfig.tsbuildinfo
+Fit-Tracker-Viz/fit-tracker-viz/tsconfig.tsbuildinfo
