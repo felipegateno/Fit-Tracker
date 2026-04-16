@@ -23,6 +23,8 @@ interface PageProps {
   searchParams: Promise<{ date?: string; days?: string }>
 }
 
+export const revalidate = 300; // Refresca los datos cada 300 segundos (5 min)
+
 async function fetchDashboardData(date: string) {
   const db = createServerClient()
 
