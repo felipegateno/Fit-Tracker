@@ -1,8 +1,6 @@
-import { Suspense } from "react"
 import { createServerClient, NUTRIBOT_USER_ID } from "@/lib/supabase"
-import { today, lastNDays } from "@/lib/utils"
+import { lastNDays, parseNumDays } from "@/lib/utils"
 import { format, subDays } from "date-fns"
-import DateBar from "@/components/DateBar"
 import KpiGrid from "@/components/KpiGrid"
 import MacroCard from "@/components/MacroCard"
 import EnergyBalanceChart from "@/components/EnergyBalanceChart"
@@ -17,16 +15,28 @@ import type {
   GarminHrv,
   GarminTrainingReadiness,
   GarminActivity,
+  DashboardDayPoint,
 } from "@/types"
 
 interface PageProps {
   searchParams: Promise<{ date?: string; days?: string }>
 }
 
-export const revalidate = 300; // Refresca los datos cada 300 segundos (5 min)
+export const revalidate = 300
 
-async function fetchDashboardData(date: string) {
+async function fetchDashboardData(date: string, numDays: number) {
   const db = createServerClient()
+  const dayList = lastNDays(numDays, date)
+  const rangeStart = dayList[0]!
+  const rangeEnd = dayList[dayList.length - 1]!
+  const monthPrefix = date.slice(0, 7)
+
+  const rpcForRange = () =>
+    Promise.all(
+      dayList.map((d) =>
+        db.rpc("get_daily_totals", { p_user_id: NUTRIBOT_USER_ID, p_date: d })
+      )
+    )
 
   const [
     totalsRes,
@@ -36,8 +46,9 @@ async function fetchDashboardData(date: string) {
     sleepRes,
     hrvRes,
     readinessRes,
-    health7Res,
-    nutr7Res,
+    healthRangeRes,
+    sleepRangeRes,
+    totalsRangeResults,
     activitiesRes,
   ] = await Promise.all([
     db.rpc("get_daily_totals", { p_user_id: NUTRIBOT_USER_ID, p_date: date }),
@@ -62,21 +73,21 @@ async function fetchDashboardData(date: string) {
     db
       .from("garmin_daily_health")
       .select("date, total_steps, step_goal, active_calories, total_calories")
-      .gte("date", format(subDays(new Date(date), 6), "yyyy-MM-dd"))
-      .lte("date", date)
+      .gte("date", rangeStart)
+      .lte("date", rangeEnd)
       .order("date", { ascending: true }),
     db
-      .from("food_log")
-      .select("logged_at, calories, fiber_g")
-      .eq("user_id", NUTRIBOT_USER_ID)
-      .gte("logged_at", format(subDays(new Date(date), 6), "yyyy-MM-dd"))
-      .lte("logged_at", date + "T23:59:59.999Z")
-      .order("logged_at", { ascending: true }),
+      .from("garmin_sleep")
+      .select("date, total_sleep_seconds, sleep_score")
+      .gte("date", rangeStart)
+      .lte("date", rangeEnd)
+      .order("date", { ascending: true }),
+    rpcForRange(),
     db
       .from("garmin_activities")
       .select("id, user_id, activity_id, date, activity_type, name, duration_seconds, calories")
-      .gte("date", format(new Date(), "yyyy-MM") + "-01")
-      .lte("date", format(new Date(), "yyyy-MM") + "-31")
+      .gte("date", monthPrefix + "-01")
+      .lte("date", monthPrefix + "-31")
       .order("date", { ascending: true }),
   ])
 
@@ -94,22 +105,28 @@ async function fetchDashboardData(date: string) {
     0
   )
 
-  const nutrByDate: Record<string, number> = {}
-  for (const row of nutr7Res.data ?? []) {
-    const d = row.logged_at.split("T")[0]
-    nutrByDate[d] = (nutrByDate[d] ?? 0) + (row.calories ?? 0)
-  }
+  const healthRows = (healthRangeRes.data ?? []) as Array<{
+    date: string
+    total_steps?: number
+    step_goal?: number
+    total_calories?: number
+  }>
+  const sleepRows = (sleepRangeRes.data ?? []) as Array<{
+    date: string
+    total_sleep_seconds?: number
+  }>
 
-  const days7 = lastNDays(7).map((d) => {
-    const gh = (health7Res.data ?? []).find(
-      (r: { date: string }) => r.date === d
-    )
+  const daySeries: DashboardDayPoint[] = dayList.map((d, i) => {
+    const gh = healthRows.find((r) => r.date === d)
+    const sl = sleepRows.find((r) => r.date === d)
+    const row = totalsRangeResults[i]?.data?.[0]
     return {
       date: d,
-      consumidas: Math.round(nutrByDate[d] ?? 0),
-      quemadas: Math.round((gh as { total_calories?: number } | undefined)?.total_calories ?? 0),
-      total_steps: (gh as { total_steps?: number } | undefined)?.total_steps ?? 0,
-      step_goal: (gh as { step_goal?: number } | undefined)?.step_goal ?? 9470,
+      consumidas: Math.round(Number(row?.total_calories ?? 0)),
+      quemadas: Math.round(Number(gh?.total_calories ?? 0)),
+      total_steps: gh?.total_steps ?? 0,
+      step_goal: gh?.step_goal ?? 9470,
+      sleep_seconds: sl?.total_sleep_seconds ?? null,
     }
   })
 
@@ -121,7 +138,7 @@ async function fetchDashboardData(date: string) {
     sleep: sleepRes.data as GarminSleep | null,
     hrv: hrvRes.data as GarminHrv | null,
     readiness: readinessRes.data as GarminTrainingReadiness | null,
-    days7,
+    daySeries,
     activities: (activitiesRes.data ?? []) as GarminActivity[],
   }
 }
@@ -129,21 +146,20 @@ async function fetchDashboardData(date: string) {
 export default async function DashboardPage({ searchParams }: PageProps) {
   const params = await searchParams
   const date = params.date || format(subDays(new Date(), 1), "yyyy-MM-dd")
-  const month = format(new Date(), "yyyy-MM")
+  const numDays = parseNumDays(params.days)
+  const month = date.slice(0, 7)
 
-  const data = await fetchDashboardData(date)
+  const data = await fetchDashboardData(date, numDays)
 
   return (
     <div className="space-y-6 pt-2">
-      <Suspense>
-        <DateBar />
-      </Suspense>
-
       <KpiGrid
         totals={data.totals}
         goals={data.goals}
         health={data.health}
         sleep={data.sleep}
+        numDays={numDays}
+        daySeries={data.daySeries}
       />
 
       <MacroCard
@@ -153,7 +169,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       />
 
       <EnergyBalanceChart
-        data={data.days7.map((d) => ({
+        data={data.daySeries.map((d) => ({
           date: d.date,
           consumidas: d.consumidas,
           quemadas: d.quemadas,
@@ -161,7 +177,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
       />
 
       <StepsChart
-        data={data.days7.map((d) => ({
+        data={data.daySeries.map((d) => ({
           date: d.date,
           total_steps: d.total_steps,
           step_goal: d.step_goal,

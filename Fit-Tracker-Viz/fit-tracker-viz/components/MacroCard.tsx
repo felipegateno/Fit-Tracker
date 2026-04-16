@@ -61,27 +61,55 @@ export default function MacroCard({ totals, totalFiber, goals }: Props) {
       <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Macros del día</h2>
       <div className="bg-gray-900 rounded-xl p-4 space-y-4">
         {macros.map((m) => {
-          const pct = Math.min((m.value / m.goal) * 100, 100)
+          const goalSafe = m.goal > 0 ? m.goal : 1
+          const pctRaw = (m.value / goalSafe) * 100
+          const pctDisplay = Math.round(pctRaw)
+          const over = pctRaw > 100
+
           return (
             <div key={m.key} className="space-y-1.5">
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-sm gap-2">
                 <span className="text-gray-300">{m.label}</span>
-                <span className="text-gray-400">
+                <span className="text-gray-400 text-right">
                   <span className="text-white font-medium">{formatNum(m.value)}</span>
-                  {" / "}{formatNum(m.goal)}{m.unit}
+                  {" / "}
+                  {formatNum(m.goal)}
+                  {m.unit}
+                  <span className="text-gray-500"> — {pctDisplay}%</span>
                 </span>
               </div>
-              <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all"
-                  style={{ width: `${pct}%`, backgroundColor: m.color }}
-                />
+              <div className="relative pt-0.5">
+                <div className="relative h-2.5 bg-gray-800 rounded-full overflow-hidden w-full">
+                  <div
+                    className={`absolute left-0 top-0 bottom-0 ${over ? "rounded-l-full" : "rounded-full"}`}
+                    style={{
+                      width: `${Math.min(pctRaw, 100)}%`,
+                      backgroundColor: m.color,
+                    }}
+                  />
+                  {over && (
+                    <div
+                      className="absolute top-0 bottom-0 rounded-r-full"
+                      style={{
+                        left: "100%",
+                        width: `${pctRaw - 100}%`,
+                        backgroundColor: "#f97316",
+                      }}
+                    />
+                  )}
+                  {over && (
+                    <div
+                      className="absolute top-0 bottom-0 w-0.5 bg-white z-10 pointer-events-none opacity-90 rounded-full"
+                      style={{ left: "100%", transform: "translateX(-50%)" }}
+                      aria-hidden
+                    />
+                  )}
+                </div>
               </div>
             </div>
           )
         })}
 
-        {/* Caloric distribution donut-style bar */}
         <div className="pt-2 space-y-2">
           <span className="text-xs text-gray-500">Distribución calórica</span>
           <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
@@ -97,7 +125,7 @@ export default function MacroCard({ totals, totalFiber, goals }: Props) {
               )
             })}
           </div>
-          <div className="flex gap-3 text-xs text-gray-500">
+          <div className="flex gap-3 text-xs text-gray-500 flex-wrap">
             {distribution.map((d) => (
               <span key={d.label} className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: d.color }} />

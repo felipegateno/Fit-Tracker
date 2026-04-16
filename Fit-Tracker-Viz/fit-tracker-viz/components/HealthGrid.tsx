@@ -72,9 +72,9 @@ export default function HealthGrid({ health, sleep, hrv, readiness }: Props) {
             sub={health?.avg_stress != null ? (health.avg_stress < 26 ? "bajo" : health.avg_stress < 51 ? "medio" : "alto") : undefined}
           />
           <MetricCard
-            label="SpO₂"
-            value={sleep?.avg_spo2 != null ? Math.round(sleep.avg_spo2) : "—"}
-            unit={sleep?.avg_spo2 != null ? "%" : undefined}
+            label="Min. intensidad"
+            value={health?.intensity_minutes ?? "—"}
+            unit={health?.intensity_minutes != null ? "min" : undefined}
           />
           <MetricCard
             label="HRV"

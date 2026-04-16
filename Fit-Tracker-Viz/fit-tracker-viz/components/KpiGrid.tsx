@@ -1,11 +1,19 @@
 import { formatNum, secondsToHM } from "@/lib/utils"
-import type { GarminDailyHealth, GarminSleep, DailyTotals, DailyGoals } from "@/types"
+import type {
+  GarminDailyHealth,
+  GarminSleep,
+  DailyTotals,
+  DailyGoals,
+  DashboardDayPoint,
+} from "@/types"
 
 interface Props {
   totals: DailyTotals
   goals: DailyGoals | null
   health: GarminDailyHealth | null
   sleep: GarminSleep | null
+  numDays: number
+  daySeries: DashboardDayPoint[]
 }
 
 function KpiCard({ label, value, unit, sub }: { label: string; value: string; unit?: string; sub?: string }) {
@@ -21,32 +29,74 @@ function KpiCard({ label, value, unit, sub }: { label: string; value: string; un
   )
 }
 
-export default function KpiGrid({ totals, goals, health, sleep }: Props) {
-  const consumidas = Math.round(totals.total_calories)
-  const quemadas = health?.total_calories ?? null
-  const meta = goals?.calories_goal ?? 2000
-  const deficit = quemadas != null ? quemadas - consumidas : null
+function meanSteps(series: DashboardDayPoint[]): number {
+  if (series.length === 0) return 0
+  const sum = series.reduce((s, d) => s + d.total_steps, 0)
+  return Math.round(sum / series.length)
+}
 
-  const sleepHours = sleep?.total_sleep_seconds
-    ? secondsToHM(sleep.total_sleep_seconds)
-    : "—"
+function meanSleepSeconds(series: DashboardDayPoint[]): number | null {
+  const withSleep = series.filter((d) => d.sleep_seconds != null && d.sleep_seconds > 0)
+  if (withSleep.length === 0) return null
+  const sum = withSleep.reduce((s, d) => s + (d.sleep_seconds ?? 0), 0)
+  return Math.round(sum / withSleep.length)
+}
+
+function meanConsumidas(series: DashboardDayPoint[]): number {
+  if (series.length === 0) return 0
+  return Math.round(series.reduce((s, d) => s + d.consumidas, 0) / series.length)
+}
+
+function meanQuemadas(series: DashboardDayPoint[]): number {
+  if (series.length === 0) return 0
+  return Math.round(series.reduce((s, d) => s + d.quemadas, 0) / series.length)
+}
+
+export default function KpiGrid({ totals, goals, health, sleep, numDays, daySeries }: Props) {
+  const meta = goals?.calories_goal ?? 2000
+  const rangeLabel = numDays === 7 ? "7 días" : numDays === 30 ? "30 días" : null
+
+  const singleDay = numDays === 1
+  const consumidas = singleDay ? Math.round(totals.total_calories) : meanConsumidas(daySeries)
+  const quemadas = singleDay ? health?.total_calories ?? null : meanQuemadas(daySeries)
+  const deficit = quemadas != null ? consumidas - quemadas : null
+
+  const stepsValue = singleDay
+    ? health?.total_steps != null
+      ? formatNum(health.total_steps)
+      : "—"
+    : formatNum(meanSteps(daySeries))
+
+  const stepsSub = singleDay
+    ? health?.step_goal
+      ? `meta ${formatNum(health.step_goal)}`
+      : undefined
+    : rangeLabel
+      ? `promedio ${rangeLabel}`
+      : undefined
+
+  const avgSleepSec = !singleDay ? meanSleepSeconds(daySeries) : null
+  const sleepHours = singleDay
+    ? sleep?.total_sleep_seconds
+      ? secondsToHM(sleep.total_sleep_seconds)
+      : "—"
+    : avgSleepSec != null
+      ? secondsToHM(avgSleepSec)
+      : "—"
+
+  const sleepSub = singleDay
+    ? sleep?.sleep_score != null
+      ? `score ${sleep.sleep_score}`
+      : undefined
+    : rangeLabel
+      ? `promedio ${rangeLabel}`
+      : undefined
+
+  const balanceSub = rangeLabel ? `promedio ${rangeLabel}` : undefined
 
   return (
     <section className="px-4 space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <KpiCard
-          label="Pasos"
-          value={health?.total_steps != null ? formatNum(health.total_steps) : "—"}
-          sub={health?.step_goal ? `meta ${formatNum(health.step_goal)}` : undefined}
-        />
-        <KpiCard
-          label="Sueño"
-          value={sleepHours}
-          sub={sleep?.sleep_score != null ? `score ${sleep.sleep_score}` : undefined}
-        />
-      </div>
-
-      {/* Balance card */}
+      {/* Balance card first */}
       <div className="bg-gray-900 rounded-xl p-4 space-y-3">
         <div className="flex justify-between items-center">
           <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Balance energético</span>
@@ -56,9 +106,15 @@ export default function KpiGrid({ totals, goals, health, sleep }: Props) {
             </span>
           )}
         </div>
+        {balanceSub && <span className="text-xs text-gray-500 block -mt-1">{balanceSub}</span>}
         <BalanceBar label="Consumidas" value={consumidas} max={meta} color="#5DCAA5" />
         <BalanceBar label="Quemadas" value={quemadas ?? 0} max={meta} color="#D85A30" />
         <BalanceBar label="Meta" value={meta} max={meta} color="#4B5563" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <KpiCard label="Pasos" value={stepsValue} sub={stepsSub} />
+        <KpiCard label="Sueño" value={sleepHours} sub={sleepSub} />
       </div>
     </section>
   )

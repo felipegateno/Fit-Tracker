@@ -163,3 +163,13 @@ export const MACRO_COLORS = {
   grasas: '#EF9F27',
   fibra: '#97C459',
 }
+
+/** Punto diario para KPIs y gráficos (rango N días). */
+export interface DashboardDayPoint {
+  date: string
+  consumidas: number
+  quemadas: number
+  total_steps: number
+  step_goal: number
+  sleep_seconds: number | null
+}
