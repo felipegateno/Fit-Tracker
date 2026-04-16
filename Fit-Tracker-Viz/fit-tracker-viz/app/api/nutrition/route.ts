@@ -9,45 +9,60 @@ export async function GET(req: NextRequest) {
 
   const db = createServerClient()
 
+  // --- CASO 1: GRÁFICO DE N DÍAS ---
   if (days) {
-    // Return aggregate per day for last N days
-    const startDate = new Date(date)
-    startDate.setDate(startDate.getDate() - days + 1)
-    const startISO = startDate.toISOString().split("T")[0]
+    const dateList: string[] = []
+    const baseDate = new Date(date + "T12:00:00") // Usamos mediodía para evitar saltos de día por zona horaria en JS
 
-    const { data, error } = await db
-      .from("food_log")
-      .select("logged_at, calories, protein_g, carbs_g, fat_g, fiber_g")
-      .eq("user_id", NUTRIBOT_USER_ID)
-      .gte("logged_at", startISO)
-      .lte("logged_at", date + "T23:59:59.999Z")
-      .order("logged_at", { ascending: true })
-
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-    // Group by date
-    const byDate: Record<string, { date: string; calories: number; protein: number; carbs: number; fat: number; fiber: number }> = {}
-    for (const row of data ?? []) {
-      const d = row.logged_at.split("T")[0]
-      if (!byDate[d]) byDate[d] = { date: d, calories: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
-      byDate[d].calories += row.calories ?? 0
-      byDate[d].protein += row.protein_g ?? 0
-      byDate[d].carbs += row.carbs_g ?? 0
-      byDate[d].fat += row.fat_g ?? 0
-      byDate[d].fiber += row.fiber_g ?? 0
+    // Generamos la lista de fechas hacia atrás
+    for (let i = 0; i < days; i++) {
+      const d = new Date(baseDate)
+      d.setDate(d.getDate() - i)
+      dateList.push(d.toISOString().split("T")[0])
     }
 
-    return NextResponse.json(Object.values(byDate))
+    // Ejecutamos el RPC para cada día en paralelo para asegurar consistencia total
+    const results = await Promise.all(
+      dateList.reverse().map(async (d) => {
+        // 1. Obtener totales del RPC
+        const { data: totals } = await db.rpc("get_daily_totals", {
+          p_user_id: NUTRIBOT_USER_ID,
+          p_date: d,
+        })
+
+        // 2. Obtener fibra (ya que el RPC no la incluye)
+        const { data: fiberData } = await db
+          .from("food_log")
+          .select("fiber_g")
+          .eq("user_id", NUTRIBOT_USER_ID)
+          .gte("logged_at", d)
+          .lte("logged_at", d + "T23:59:59.999Z")
+
+        const total_fiber = (fiberData ?? []).reduce((sum, r) => sum + (r.fiber_g ?? 0), 0)
+        const t = totals?.[0] ?? { total_calories: 0, total_protein: 0, total_carbs: 0, total_fat: 0 }
+
+        return {
+          date: d,
+          calories: t.total_calories || 0,
+          protein: t.total_protein || 0,
+          carbs: t.total_carbs || 0,
+          fat: t.total_fat || 0,
+          fiber: total_fiber,
+        }
+      })
+    )
+
+    return NextResponse.json(results)
   }
 
-  // Single day totals via RPC
+  // --- CASO 2: TARJETA DEL DÍA (LÓGICA ORIGINAL) ---
   const { data: totals, error: totalsError } = await db.rpc("get_daily_totals", {
     p_user_id: NUTRIBOT_USER_ID,
     p_date: date,
   })
+  
   if (totalsError) return NextResponse.json({ error: totalsError.message }, { status: 500 })
 
-  // Also get fiber (not in RPC)
   const { data: fiberData } = await db
     .from("food_log")
     .select("fiber_g")
@@ -57,7 +72,6 @@ export async function GET(req: NextRequest) {
 
   const total_fiber = (fiberData ?? []).reduce((sum, r) => sum + (r.fiber_g ?? 0), 0)
 
-  // Get goals
   const { data: goals } = await db
     .from("daily_goals")
     .select("*")
