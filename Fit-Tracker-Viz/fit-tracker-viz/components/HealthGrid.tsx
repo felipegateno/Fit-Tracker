@@ -1,11 +1,13 @@
-import { formatNum, secondsToHM } from "@/lib/utils"
 import type { GarminDailyHealth, GarminSleep, GarminHrv, GarminTrainingReadiness } from "@/types"
+import type { DashboardMode } from "@/types"
 
 interface Props {
   health: GarminDailyHealth | null
   sleep: GarminSleep | null
   hrv: GarminHrv | null
   readiness: GarminTrainingReadiness | null
+  healthRange: GarminDailyHealth[]
+  mode: DashboardMode
 }
 
 function MetricCard({
@@ -46,35 +48,72 @@ function hrvStatusLabel(status: string | null): string {
   return { BALANCED: "Equilibrado", UNBALANCED: "Desequilibrado", LOW: "Bajo" }[status] ?? status
 }
 
-export default function HealthGrid({ health, sleep, hrv, readiness }: Props) {
+function meanNullable(nums: (number | null | undefined)[]): number | null {
+  const v = nums.filter((x): x is number => x != null && !Number.isNaN(x))
+  if (v.length === 0) return null
+  return Math.round(v.reduce((a, b) => a + b, 0) / v.length)
+}
+
+export default function HealthGrid({ health, sleep, hrv, readiness, healthRange, mode }: Props) {
+  const aggregate = mode !== "daily" && healthRange.length > 0
+
+  const resting = aggregate
+    ? meanNullable(healthRange.map((h) => h.resting_hr))
+    : health?.resting_hr ?? null
+
+  const bbHigh = aggregate
+    ? meanNullable(healthRange.map((h) => h.body_battery_highest))
+    : health?.body_battery_highest ?? null
+  const bbLow = aggregate
+    ? meanNullable(healthRange.map((h) => h.body_battery_lowest))
+    : health?.body_battery_lowest ?? null
+
+  const stress = aggregate
+    ? meanNullable(healthRange.map((h) => h.avg_stress))
+    : health?.avg_stress ?? null
+
+  const intensity = aggregate
+    ? healthRange.reduce((s, h) => s + (h.intensity_minutes ?? 0), 0)
+    : health?.intensity_minutes ?? null
+
+  const rangeSub =
+    mode === "weekly" ? "promedio semanal (intensidad: total)" : mode === "monthly" ? "promedio mensual (intensidad: total)" : undefined
+
   return (
     <section className="px-4 space-y-3">
       <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Salud Garmin</h2>
+      {rangeSub && <p className="text-xs text-gray-500 -mt-1">{rangeSub}</p>}
       <div className="bg-gray-900 rounded-xl p-4">
         <div className="grid grid-cols-3 gap-2">
           <MetricCard
             label="FC reposo"
-            value={health?.resting_hr ?? "—"}
-            unit={health?.resting_hr != null ? "bpm" : undefined}
+            value={resting ?? "—"}
+            unit={resting != null ? "bpm" : undefined}
           />
           <MetricCard
             label="Body Battery"
-            value={health?.body_battery_highest ?? "—"}
-            unit={health?.body_battery_highest != null ? "max" : undefined}
-            sub={health?.body_battery_lowest != null ? `mín ${health.body_battery_lowest}` : undefined}
-            color={health?.body_battery_highest != null
-              ? health.body_battery_highest >= 50 ? "#1D9E75" : "#EF9F27"
-              : undefined}
+            value={bbHigh ?? "—"}
+            unit={bbHigh != null ? "max" : undefined}
+            sub={bbLow != null ? `mín ${bbLow}` : undefined}
+            color={bbHigh != null ? (bbHigh >= 50 ? "#1D9E75" : "#EF9F27") : undefined}
           />
           <MetricCard
             label="Estrés"
-            value={health?.avg_stress ?? "—"}
-            sub={health?.avg_stress != null ? (health.avg_stress < 26 ? "bajo" : health.avg_stress < 51 ? "medio" : "alto") : undefined}
+            value={stress ?? "—"}
+            sub={
+              stress != null
+                ? stress < 26
+                  ? "bajo"
+                  : stress < 51
+                    ? "medio"
+                    : "alto"
+                : undefined
+            }
           />
           <MetricCard
             label="Min. intensidad"
-            value={health?.intensity_minutes ?? "—"}
-            unit={health?.intensity_minutes != null ? "min" : undefined}
+            value={intensity ?? "—"}
+            unit={intensity != null ? "min" : undefined}
           />
           <MetricCard
             label="HRV"

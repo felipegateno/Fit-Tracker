@@ -14,6 +14,7 @@ interface Props {
   sleep: GarminSleep | null
   numDays: number
   daySeries: DashboardDayPoint[]
+  rangeLabel: string | null
 }
 
 function KpiCard({ label, value, unit, sub }: { label: string; value: string; unit?: string; sub?: string }) {
@@ -52,9 +53,16 @@ function meanQuemadas(series: DashboardDayPoint[]): number {
   return Math.round(series.reduce((s, d) => s + d.quemadas, 0) / series.length)
 }
 
-export default function KpiGrid({ totals, goals, health, sleep, numDays, daySeries }: Props) {
+export default function KpiGrid({
+  totals,
+  goals,
+  health,
+  sleep,
+  numDays,
+  daySeries,
+  rangeLabel,
+}: Props) {
   const meta = goals?.calories_goal ?? 2000
-  const rangeLabel = numDays === 7 ? "7 días" : numDays === 30 ? "30 días" : null
 
   const singleDay = numDays === 1
   const consumidas = singleDay ? Math.round(totals.total_calories) : meanConsumidas(daySeries)
@@ -72,7 +80,7 @@ export default function KpiGrid({ totals, goals, health, sleep, numDays, daySeri
       ? `meta ${formatNum(health.step_goal)}`
       : undefined
     : rangeLabel
-      ? `promedio ${rangeLabel}`
+      ? rangeLabel
       : undefined
 
   const avgSleepSec = !singleDay ? meanSleepSeconds(daySeries) : null
@@ -89,14 +97,13 @@ export default function KpiGrid({ totals, goals, health, sleep, numDays, daySeri
       ? `score ${sleep.sleep_score}`
       : undefined
     : rangeLabel
-      ? `promedio ${rangeLabel}`
+      ? rangeLabel
       : undefined
 
-  const balanceSub = rangeLabel ? `promedio ${rangeLabel}` : undefined
+  const balanceSub = rangeLabel ?? undefined
 
   return (
     <section className="px-4 space-y-3">
-      {/* Balance card first */}
       <div className="bg-gray-900 rounded-xl p-4 space-y-3">
         <div className="flex justify-between items-center">
           <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Balance energético</span>

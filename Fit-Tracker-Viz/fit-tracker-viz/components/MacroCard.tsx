@@ -1,3 +1,7 @@
+"use client"
+
+import { useState } from "react"
+import { PieChart, Pie, Cell, Tooltip } from "recharts"
 import { MACRO_COLORS } from "@/types"
 import { formatNum } from "@/lib/utils"
 import type { DailyTotals, DailyGoals } from "@/types"
@@ -17,7 +21,9 @@ interface MacroRow {
   unit: string
 }
 
-export default function MacroCard({ totals, totalFiber, goals }: Props) {
+type DistItem = { label: string; cal: number; color: string; fullLabel: string }
+
+export default function MacroCard({ totals, totalFiber: _totalFiber, goals }: Props) {
   const macros: MacroRow[] = [
     {
       key: "proteina",
@@ -50,11 +56,13 @@ export default function MacroCard({ totals, totalFiber, goals }: Props) {
   const carbsCal = totals.total_carbs * 4
   const fatCal = totals.total_fat * 9
 
-  const distribution = [
-    { label: "Prot", cal: protCal, color: MACRO_COLORS.proteina },
-    { label: "Carbs", cal: carbsCal, color: MACRO_COLORS.carbohidratos },
-    { label: "Gras", cal: fatCal, color: MACRO_COLORS.grasas },
+  const distribution: DistItem[] = [
+    { label: "Prot", fullLabel: "Proteína", cal: protCal, color: MACRO_COLORS.proteina },
+    { label: "Carbs", fullLabel: "Carbohidratos", cal: carbsCal, color: MACRO_COLORS.carbohidratos },
+    { label: "Gras", fullLabel: "Grasas", cal: fatCal, color: MACRO_COLORS.grasas },
   ]
+
+  const [activeDonut, setActiveDonut] = useState<number | null>(null)
 
   return (
     <section className="px-4 space-y-3">
@@ -65,6 +73,10 @@ export default function MacroCard({ totals, totalFiber, goals }: Props) {
           const pctRaw = (m.value / goalSafe) * 100
           const pctDisplay = Math.round(pctRaw)
           const over = pctRaw > 100
+          const barMax = Math.max(pctRaw, 100)
+          const normalWidth = (Math.min(pctRaw, 100) / barMax) * 100
+          const excessWidth = over ? ((pctRaw - 100) / barMax) * 100 : 0
+          const markerLeft = (100 / barMax) * 100
 
           return (
             <div key={m.key} className="space-y-1.5">
@@ -79,53 +91,92 @@ export default function MacroCard({ totals, totalFiber, goals }: Props) {
                 </span>
               </div>
               <div className="relative pt-0.5">
-                <div className="relative h-2.5 bg-gray-800 rounded-full overflow-hidden w-full">
+                <div className="relative h-2.5 bg-gray-800 rounded-full overflow-hidden w-full flex">
                   <div
-                    className={`absolute left-0 top-0 bottom-0 ${over ? "rounded-l-full" : "rounded-full"}`}
+                    className={`h-full shrink-0 ${over ? "rounded-l-full" : "rounded-full"}`}
                     style={{
-                      width: `${Math.min(pctRaw, 100)}%`,
+                      width: `${normalWidth}%`,
                       backgroundColor: m.color,
                     }}
                   />
                   {over && (
                     <div
-                      className="absolute top-0 bottom-0 rounded-r-full"
+                      className="h-full rounded-r-full shrink-0"
                       style={{
-                        left: "100%",
-                        width: `${pctRaw - 100}%`,
+                        width: `${excessWidth}%`,
                         backgroundColor: "#f97316",
                       }}
                     />
                   )}
-                  {over && (
-                    <div
-                      className="absolute top-0 bottom-0 w-0.5 bg-white z-10 pointer-events-none opacity-90 rounded-full"
-                      style={{ left: "100%", transform: "translateX(-50%)" }}
-                      aria-hidden
-                    />
-                  )}
                 </div>
+                {over && (
+                  <div
+                    className="absolute top-0 bottom-0 w-0.5 bg-white z-10 pointer-events-none opacity-90 rounded-full"
+                    style={{ left: `${markerLeft}%`, transform: "translateX(-50%)" }}
+                    aria-hidden
+                  />
+                )}
               </div>
             </div>
           )
         })}
 
-        <div className="pt-2 space-y-2">
+        <div className="pt-2 space-y-3">
           <span className="text-xs text-gray-500">Distribución calórica</span>
-          <div className="flex h-3 rounded-full overflow-hidden gap-0.5">
-            {distribution.map((d) => {
-              const w = totalCal > 0 ? (d.cal / totalCal) * 100 : 0
-              return (
-                <div
-                  key={d.label}
-                  className="h-full rounded-sm"
-                  style={{ width: `${w}%`, backgroundColor: d.color }}
-                  title={`${d.label}: ${Math.round(w)}%`}
-                />
-              )
-            })}
+          <div className="flex flex-col items-center gap-3">
+            <PieChart width={200} height={200} className="mx-auto">
+              <Pie
+                data={distribution}
+                dataKey="cal"
+                nameKey="label"
+                cx="50%"
+                cy="50%"
+                innerRadius={52}
+                outerRadius={72}
+                paddingAngle={2}
+                onClick={(_, index) => setActiveDonut(activeDonut === index ? null : index)}
+              >
+                {distribution.map((d, i) => (
+                  <Cell
+                    key={i}
+                    fill={d.color}
+                    stroke={activeDonut === i ? "#e5e7eb" : "#111827"}
+                    strokeWidth={activeDonut === i ? 3 : 1}
+                    className="cursor-pointer outline-none"
+                  />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: "#111827",
+                  border: "1px solid #374151",
+                  borderRadius: 8,
+                }}
+                labelStyle={{ color: "#e5e7eb" }}
+                itemStyle={{ color: "#9ca3af" }}
+                formatter={(val) => [`${Math.round(Number(val ?? 0))} kcal`, ""]}
+              />
+            </PieChart>
+            {activeDonut != null && distribution[activeDonut] && (
+              <div
+                className="w-full rounded-lg border border-gray-700 bg-gray-800/80 px-3 py-2 text-center text-sm"
+                role="status"
+              >
+                <span className="font-medium text-white">{distribution[activeDonut].fullLabel}</span>
+                <span className="text-gray-400"> — </span>
+                <span className="text-indigo-300">
+                  {Math.round(distribution[activeDonut].cal).toLocaleString("es-CL")} kcal
+                </span>
+                <span className="text-gray-500 text-xs block mt-0.5">
+                  {totalCal > 0
+                    ? `${Math.round((distribution[activeDonut].cal / totalCal) * 100)}% del total`
+                    : ""}
+                </span>
+              </div>
+            )}
+            <p className="text-xs text-gray-600 text-center">Toca un sector para ver calorías</p>
           </div>
-          <div className="flex gap-3 text-xs text-gray-500 flex-wrap">
+          <div className="flex gap-3 text-xs text-gray-500 flex-wrap justify-center">
             {distribution.map((d) => (
               <span key={d.label} className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: d.color }} />

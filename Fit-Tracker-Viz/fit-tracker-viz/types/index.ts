@@ -164,6 +164,8 @@ export const MACRO_COLORS = {
   fibra: '#97C459',
 }
 
+export type DashboardMode = "daily" | "weekly" | "monthly"
+
 /** Punto diario para KPIs y gráficos (rango N días). */
 export interface DashboardDayPoint {
   date: string
