@@ -30,10 +30,20 @@ function KpiCard({ label, value, unit, sub }: { label: string; value: string; un
   )
 }
 
+/** Dias con datos de Garmin (pasos o calorias quemadas > 0). */
+function daysWithHealthData(series: DashboardDayPoint[]): DashboardDayPoint[] {
+  return series.filter((d) => d.total_steps > 0 || d.quemadas > 0)
+}
+
+/** Dias con datos de nutricion (consumidas > 0). */
+function daysWithNutritionData(series: DashboardDayPoint[]): DashboardDayPoint[] {
+  return series.filter((d) => d.consumidas > 0)
+}
+
 function meanSteps(series: DashboardDayPoint[]): number {
-  if (series.length === 0) return 0
-  const sum = series.reduce((s, d) => s + d.total_steps, 0)
-  return Math.round(sum / series.length)
+  const valid = daysWithHealthData(series)
+  if (valid.length === 0) return 0
+  return Math.round(valid.reduce((s, d) => s + d.total_steps, 0) / valid.length)
 }
 
 function meanSleepSeconds(series: DashboardDayPoint[]): number | null {
@@ -44,13 +54,15 @@ function meanSleepSeconds(series: DashboardDayPoint[]): number | null {
 }
 
 function meanConsumidas(series: DashboardDayPoint[]): number {
-  if (series.length === 0) return 0
-  return Math.round(series.reduce((s, d) => s + d.consumidas, 0) / series.length)
+  const valid = daysWithNutritionData(series)
+  if (valid.length === 0) return 0
+  return Math.round(valid.reduce((s, d) => s + d.consumidas, 0) / valid.length)
 }
 
 function meanQuemadas(series: DashboardDayPoint[]): number {
-  if (series.length === 0) return 0
-  return Math.round(series.reduce((s, d) => s + d.quemadas, 0) / series.length)
+  const valid = daysWithHealthData(series)
+  if (valid.length === 0) return 0
+  return Math.round(valid.reduce((s, d) => s + d.quemadas, 0) / valid.length)
 }
 
 export default function KpiGrid({
@@ -102,6 +114,13 @@ export default function KpiGrid({
 
   const balanceSub = rangeLabel ?? undefined
 
+  const consumidasPct = meta > 0 ? (consumidas / meta) * 100 : 0
+  const consumidasOver = consumidasPct > 100
+  const barMax = Math.max(consumidasPct, 100)
+  const consumidasNormalW = (Math.min(consumidasPct, 100) / barMax) * 100
+  const consumidasExcessW = consumidasOver ? ((consumidasPct - 100) / barMax) * 100 : 0
+  const consumidasMarkerLeft = (100 / barMax) * 100
+
   return (
     <section className="px-4 space-y-3">
       <div className="bg-gray-900 rounded-xl p-4 space-y-3">
@@ -114,9 +133,40 @@ export default function KpiGrid({
           )}
         </div>
         {balanceSub && <span className="text-xs text-gray-500 block -mt-1">{balanceSub}</span>}
-        <BalanceBar label="Consumidas" value={consumidas} max={meta} color="#5DCAA5" />
+
+        {/* Consumidas / Meta bar (merged) */}
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs">
+            <span className="text-gray-400">Consumidas / Meta</span>
+            <span className="text-gray-300 font-medium">
+              {formatNum(consumidas)} / {formatNum(meta)} kcal
+            </span>
+          </div>
+          <div className="relative pt-0.5">
+            <div className="relative h-2.5 bg-gray-800 rounded-full overflow-hidden w-full flex">
+              <div
+                className={`h-full shrink-0 ${consumidasOver ? "rounded-l-full" : "rounded-full"}`}
+                style={{ width: `${consumidasNormalW}%`, backgroundColor: "#5DCAA5" }}
+              />
+              {consumidasOver && (
+                <div
+                  className="h-full rounded-r-full shrink-0"
+                  style={{ width: `${consumidasExcessW}%`, backgroundColor: "#f97316" }}
+                />
+              )}
+            </div>
+            {consumidasOver && (
+              <div
+                className="absolute top-0 bottom-0 w-0.5 bg-white z-10 pointer-events-none opacity-90 rounded-full"
+                style={{ left: `${consumidasMarkerLeft}%`, transform: "translateX(-50%)" }}
+                aria-hidden
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Quemadas bar */}
         <BalanceBar label="Quemadas" value={quemadas ?? 0} max={meta} color="#D85A30" />
-        <BalanceBar label="Meta" value={meta} max={meta} color="#4B5563" />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -135,7 +185,7 @@ function BalanceBar({ label, value, max, color }: { label: string; value: number
         <span className="text-gray-400">{label}</span>
         <span className="text-gray-300 font-medium">{formatNum(value)} kcal</span>
       </div>
-      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+      <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${pct}%`, backgroundColor: color }}

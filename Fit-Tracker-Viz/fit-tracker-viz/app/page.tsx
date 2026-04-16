@@ -27,8 +27,11 @@ interface PageProps {
 
 export const revalidate = 300
 
+/** Promedia solo dias que tengan datos reales (entry_count > 0). */
 function averageDailyTotals(rows: (DailyTotals | undefined)[]): DailyTotals {
-  const r = rows.filter((x): x is DailyTotals => x != null)
+  const r = rows.filter(
+    (x): x is DailyTotals => x != null && (x.entry_count ?? 0) > 0
+  )
   if (r.length === 0) {
     return {
       total_calories: 0,
@@ -142,7 +145,12 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
     (s: number, r: { fiber_g: number }) => s + (r.fiber_g ?? 0),
     0
   )
-  const totalFiber = numDays > 1 ? fiberSum / numDays : fiberSum
+  const daysWithNutrition = rpcRows.filter(
+    (x): x is DailyTotals => x != null && (x.entry_count ?? 0) > 0
+  ).length
+  const totalFiber = numDays > 1 && daysWithNutrition > 0
+    ? fiberSum / daysWithNutrition
+    : fiberSum
 
   const healthRows = (healthChartRes.data ?? []) as Array<{
     date: string
