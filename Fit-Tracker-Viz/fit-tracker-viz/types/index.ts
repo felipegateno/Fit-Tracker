@@ -14,6 +14,15 @@ export interface FoodLog {
   logged_at: string
 }
 
+/** Subset de food_log para la vista "Registro de comidas" (panel diario). */
+export interface FoodLogEntry {
+  raw_input: string
+  quantity_g: number
+  calories: number
+  meal_type: string
+  logged_at: string
+}
+
 export interface DailyGoals {
   id: string
   user_id: string
@@ -74,6 +83,7 @@ export interface GarminDailyHealth {
   body_battery_lowest: number | null
   floors_climbed: number | null
   intensity_minutes: number | null
+  garmin_last_sync: string | null
   synced_at: string
 }
 

@@ -1,4 +1,6 @@
 import { formatNum, secondsToHM } from "@/lib/utils"
+import { formatDistanceToNow } from "date-fns"
+import { es } from "date-fns/locale"
 import type {
   GarminDailyHealth,
   GarminSleep,
@@ -173,7 +175,39 @@ export default function KpiGrid({
         <KpiCard label="Pasos" value={stepsValue} sub={stepsSub} />
         <KpiCard label="Sueño" value={sleepHours} sub={sleepSub} />
       </div>
+
+      {singleDay && <GarminSyncBadge lastSync={health?.garmin_last_sync ?? null} />}
     </section>
+  )
+}
+
+function GarminSyncBadge({ lastSync }: { lastSync: string | null }) {
+  if (!lastSync) return null
+
+  const syncDate = new Date(lastSync)
+  const ageMs = Date.now() - syncDate.getTime()
+  const ageMinutes = ageMs / 60_000
+
+  let dotColor: string
+  let label: string
+  if (ageMinutes < 60) {
+    dotColor = "bg-emerald-400"
+    label = "Garmin actualizado"
+  } else if (ageMinutes < 180) {
+    dotColor = "bg-yellow-400"
+    label = "Garmin desactualizado"
+  } else {
+    dotColor = "bg-rose-400"
+    label = "Garmin sin sync"
+  }
+
+  const ago = formatDistanceToNow(syncDate, { addSuffix: true, locale: es })
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-gray-500">
+      <span className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`} />
+      <span>{label} · {ago}</span>
+    </div>
   )
 }
 

@@ -9,6 +9,7 @@ import EnergyBalanceChart from "@/components/EnergyBalanceChart"
 import StepsChart from "@/components/StepsChart"
 import WorkoutCalendar from "@/components/WorkoutCalendar"
 import HealthGrid from "@/components/HealthGrid"
+import MealLog from "@/components/MealLog"
 import type {
   DailyTotals,
   DailyGoals,
@@ -19,13 +20,14 @@ import type {
   GarminActivity,
   DashboardDayPoint,
   DashboardMode,
+  FoodLogEntry,
 } from "@/types"
 
 interface PageProps {
   searchParams: Promise<{ date?: string; mode?: string }>
 }
 
-export const revalidate = 300
+export const revalidate = 120
 
 /** Promedia solo dias que tengan datos reales (entry_count > 0). */
 function averageDailyTotals(rows: (DailyTotals | undefined)[]): DailyTotals {
@@ -54,6 +56,17 @@ function averageDailyTotals(rows: (DailyTotals | undefined)[]): DailyTotals {
 async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved) {
   const db = createServerClient()
   const { startDate, endDate, dayList, numDays } = range
+
+  const foodLogPromise =
+    mode === "daily"
+      ? db
+          .from("food_log")
+          .select("raw_input, quantity_g, calories, meal_type, logged_at")
+          .eq("user_id", NUTRIBOT_USER_ID)
+          .gte("logged_at", endDate + "T00:00:00")
+          .lte("logged_at", endDate + "T23:59:59.999Z")
+          .order("logged_at", { ascending: true })
+      : Promise.resolve({ data: [] as FoodLogEntry[] })
 
   const rpcForRange = () =>
     Promise.all(
@@ -87,6 +100,7 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
     sleepRangeRes,
     totalsRangeResults,
     activitiesRes,
+    foodLogRes,
   ] = await Promise.all([
     db.rpc("get_daily_totals", { p_user_id: NUTRIBOT_USER_ID, p_date: endDate }),
     db
@@ -129,6 +143,7 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date", { ascending: true }),
+    foodLogPromise,
   ])
 
   const rpcRows = totalsRangeResults.map((r) => r.data?.[0] as DailyTotals | undefined)
@@ -191,6 +206,7 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
     daySeries,
     activities: (activitiesRes.data ?? []) as GarminActivity[],
     calendarMonth: monthPrefix,
+    foodLog: (foodLogRes.data ?? []) as FoodLogEntry[],
   }
 }
 
@@ -222,6 +238,8 @@ export default async function DashboardPage({ searchParams }: PageProps) {
         />
 
         <MacroCard totals={data.totals} totalFiber={data.totalFiber} goals={data.goals} />
+
+        {mode === "daily" && <MealLog entries={data.foodLog} />}
 
         {mode !== "daily" && (
           <>
