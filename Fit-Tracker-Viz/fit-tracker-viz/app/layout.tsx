@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="es" className={`${inter.variable} h-full antialiased`}>
       <body className="min-h-full bg-gray-950 text-white">
         <TopNav />
-        <main className="max-w-[480px] mx-auto pb-10">
+        <main id="app-main" className="max-w-[480px] mx-auto pb-10">
           {children}
         </main>
       </body>

@@ -44,7 +44,7 @@ export function lastNDays(n: number, from: string): string[] {
 }
 
 export function parseDashboardMode(raw: string | null | undefined): DashboardMode {
-  if (raw === "weekly" || raw === "monthly") return raw
+  if (raw === "weekly" || raw === "monthly" || raw === "inbody") return raw
   return "daily"
 }
 
@@ -61,6 +61,14 @@ export type DateRangeResolved = {
 }
 
 export function resolveDashboardRange(anchor: string, mode: DashboardMode): DateRangeResolved {
+  if (mode === "inbody") {
+    return {
+      startDate: anchor,
+      endDate: anchor,
+      numDays: 0,
+      dayList: [],
+    }
+  }
   const base = parseISO(anchor + "T12:00:00")
   if (mode === "daily") {
     return {
@@ -99,4 +107,49 @@ export function secondsToHoursLabel(s: number): string {
   if (h >= 1) return `${h.toFixed(1).replace(".", ",")} h`
   const m = Math.round(s / 60)
   return `${m} min`
+}
+
+/** Número con decimales para UI (es-CL). */
+export function formatDecimal(n: number | null | undefined, decimals = 2): string {
+  if (n == null || Number.isNaN(n)) return "—"
+  return n.toLocaleString("es-CL", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  })
+}
+
+export type InbodyDeltaTone = "good" | "bad" | "neutral"
+
+/** Clasifica si un delta en una métrica es favorable, desfavorable o neutro. */
+export function inbodyDeltaTone(field: string, delta: number, epsilon = 0.05): InbodyDeltaTone {
+  if (Math.abs(delta) < epsilon) return "neutral"
+  if (field === "peso") return "neutral"
+  const higherBetter =
+    field.startsWith("musculo_") ||
+    field === "masa_muscular" ||
+    field === "agua_corporal" ||
+    field === "tmb" ||
+    field === "puntuacion_inbody"
+  const lowerBetter =
+    field.startsWith("grasa_") ||
+    field === "masa_grasa" ||
+    field === "porcentaje_grasa" ||
+    field === "grasa_visceral"
+  const up = delta > 0
+  if (higherBetter) return up ? "good" : "bad"
+  if (lowerBetter) return up ? "bad" : "good"
+  return "neutral"
+}
+
+export function inbodyDeltaColor(tone: InbodyDeltaTone): string {
+  if (tone === "good") return "#1D9E75"
+  if (tone === "bad") return "#f87171"
+  return "#9ca3af"
+}
+
+/** Formato con signo para deltas (ej. "+0,40 kg"). */
+export function formatSignedDelta(n: number, unit = ""): string {
+  const abs = Math.abs(n).toLocaleString("es-CL", { maximumFractionDigits: 2 })
+  const sign = n > 0 ? "+" : n < 0 ? "−" : ""
+  return `${sign}${abs}${unit ? ` ${unit}` : ""}`
 }

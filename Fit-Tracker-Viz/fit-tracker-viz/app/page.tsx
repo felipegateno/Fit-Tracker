@@ -9,6 +9,7 @@ import EnergyBalanceChart from "@/components/EnergyBalanceChart"
 import StepsChart from "@/components/StepsChart"
 import WorkoutCalendar from "@/components/WorkoutCalendar"
 import HealthGrid from "@/components/HealthGrid"
+import InbodyPanel from "@/components/InbodyPanel"
 import MealLog from "@/components/MealLog"
 import type {
   DailyTotals,
@@ -21,6 +22,7 @@ import type {
   DashboardDayPoint,
   DashboardMode,
   FoodLogEntry,
+  InbodyMeasurement,
 } from "@/types"
 
 interface PageProps {
@@ -210,9 +212,29 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
   }
 }
 
+async function fetchInbodyMeasurements(): Promise<InbodyMeasurement[]> {
+  const db = createServerClient()
+  const { data, error } = await db.from("inbody").select("*").order("fecha", { ascending: false })
+  if (error) {
+    console.error("inbody:", error.message)
+    return []
+  }
+  return (data ?? []) as InbodyMeasurement[]
+}
+
 export default async function DashboardPage({ searchParams }: PageProps) {
   const params = await searchParams
   const mode = parseDashboardMode(params.mode)
+
+  if (mode === "inbody") {
+    const measurements = await fetchInbodyMeasurements()
+    return (
+      <div className="space-y-6 pt-2">
+        <InbodyPanel measurements={measurements} />
+      </div>
+    )
+  }
+
   const anchorDate = params.date || format(subDays(new Date(), 1), "yyyy-MM-dd")
   const range = resolveDashboardRange(anchorDate, mode)
 

@@ -174,7 +174,35 @@ export const MACRO_COLORS = {
   fibra: '#97C459',
 }
 
-export type DashboardMode = "daily" | "weekly" | "monthly"
+export type DashboardMode = "daily" | "weekly" | "monthly" | "inbody"
+
+/** Medición InBody (tabla `inbody` en Supabase). */
+export interface InbodyMeasurement {
+  id: string
+  fecha: string
+  peso: number | null
+  masa_muscular: number | null
+  masa_grasa: number | null
+  porcentaje_grasa: number | null
+  grasa_visceral: number | null
+  tmb: number | null
+  agua_corporal: number | null
+  puntuacion_inbody: number | null
+  musculo_brazo_izq: number | null
+  musculo_brazo_der: number | null
+  musculo_tronco: number | null
+  musculo_pierna_izq: number | null
+  musculo_pierna_der: number | null
+  grasa_brazo_izq: number | null
+  grasa_brazo_der: number | null
+  grasa_tronco: number | null
+  grasa_pierna_izq: number | null
+  grasa_pierna_der: number | null
+  created_at?: string | null
+}
+
+/** Zonas segmentales clickables en la silueta SVG. */
+export type InbodySegmentRegion = "arm_left" | "arm_right" | "torso" | "leg_left" | "leg_right"
 
 /** Punto diario para KPIs y gráficos (rango N días). */
 export interface DashboardDayPoint {
