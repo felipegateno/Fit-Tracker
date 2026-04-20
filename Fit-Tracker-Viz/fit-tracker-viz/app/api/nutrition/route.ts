@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createServerClient, NUTRIBOT_USER_ID } from "@/lib/supabase"
+import { cookies } from "next/headers"
+import { createServerClient } from "@/lib/supabase"
 import { today } from "@/lib/utils"
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const date = searchParams.get("date") || today()
   const days = searchParams.get("days") ? parseInt(searchParams.get("days")!) : null
+
+  const cookieStore = await cookies()
+  const userId = searchParams.get("userId") ?? cookieStore.get("ft_userId")?.value ?? ""
 
   const db = createServerClient()
 
@@ -26,7 +30,7 @@ export async function GET(req: NextRequest) {
       dateList.reverse().map(async (d) => {
         // 1. Obtener totales del RPC
         const { data: totals } = await db.rpc("get_daily_totals", {
-          p_user_id: NUTRIBOT_USER_ID,
+          p_user_id: userId,
           p_date: d,
         })
 
@@ -34,7 +38,7 @@ export async function GET(req: NextRequest) {
         const { data: fiberData } = await db
           .from("food_log")
           .select("fiber_g")
-          .eq("user_id", NUTRIBOT_USER_ID)
+          .eq("user_id", userId)
           .gte("logged_at", d)
           .lte("logged_at", d + "T23:59:59.999Z")
 
@@ -57,7 +61,7 @@ export async function GET(req: NextRequest) {
 
   // --- CASO 2: TARJETA DEL DÍA (LÓGICA ORIGINAL) ---
   const { data: totals, error: totalsError } = await db.rpc("get_daily_totals", {
-    p_user_id: NUTRIBOT_USER_ID,
+    p_user_id: userId,
     p_date: date,
   })
   
@@ -66,7 +70,7 @@ export async function GET(req: NextRequest) {
   const { data: fiberData } = await db
     .from("food_log")
     .select("fiber_g")
-    .eq("user_id", NUTRIBOT_USER_ID)
+    .eq("user_id", userId)
     .gte("logged_at", date)
     .lte("logged_at", date + "T23:59:59.999Z")
 
@@ -75,7 +79,7 @@ export async function GET(req: NextRequest) {
   const { data: goals } = await db
     .from("daily_goals")
     .select("*")
-    .eq("user_id", NUTRIBOT_USER_ID)
+    .eq("user_id", userId)
     .lte("active_from", date)
     .order("active_from", { ascending: false })
     .limit(1)

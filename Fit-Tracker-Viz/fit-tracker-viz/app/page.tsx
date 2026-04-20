@@ -1,5 +1,7 @@
 import { Suspense } from "react"
-import { createServerClient, NUTRIBOT_USER_ID } from "@/lib/supabase"
+import { cookies } from "next/headers"
+import { redirect } from "next/navigation"
+import { createServerClient } from "@/lib/supabase"
 import { parseDashboardMode, resolveDashboardRange, type DateRangeResolved } from "@/lib/utils"
 import { format, subDays } from "date-fns"
 import DateSelector from "@/components/DateSelector"
@@ -55,7 +57,7 @@ function averageDailyTotals(rows: (DailyTotals | undefined)[]): DailyTotals {
   }
 }
 
-async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved) {
+async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved, userId: string) {
   const db = createServerClient()
   const { startDate, endDate, dayList, numDays } = range
 
@@ -64,7 +66,7 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
       ? db
           .from("food_log")
           .select("raw_input, quantity_g, calories, meal_type, logged_at")
-          .eq("user_id", NUTRIBOT_USER_ID)
+          .eq("user_id", userId)
           .gte("logged_at", endDate + "T00:00:00-04:00")
           .lte("logged_at", endDate + "T23:59:59.999-04:00")
           .order("logged_at", { ascending: true })
@@ -73,7 +75,7 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
   const rpcForRange = () =>
     Promise.all(
       dayList.map((d) =>
-        db.rpc("get_daily_totals", { p_user_id: NUTRIBOT_USER_ID, p_date: d })
+        db.rpc("get_daily_totals", { p_user_id: userId, p_date: d })
       )
     )
 
@@ -84,6 +86,7 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
       ? db
           .from("garmin_daily_health")
           .select("*")
+          .eq("user_id", userId)
           .gte("date", startDate)
           .lte("date", endDate)
           .order("date", { ascending: true })
@@ -104,35 +107,37 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
     activitiesRes,
     foodLogRes,
   ] = await Promise.all([
-    db.rpc("get_daily_totals", { p_user_id: NUTRIBOT_USER_ID, p_date: endDate }),
+    db.rpc("get_daily_totals", { p_user_id: userId, p_date: endDate }),
     db
       .from("food_log")
       .select("fiber_g")
-      .eq("user_id", NUTRIBOT_USER_ID)
+      .eq("user_id", userId)
       .gte("logged_at", startDate)
       .lte("logged_at", endDate + "T23:59:59.999Z"),
     db
       .from("daily_goals")
       .select("*")
-      .eq("user_id", NUTRIBOT_USER_ID)
+      .eq("user_id", userId)
       .lte("active_from", endDate)
       .order("active_from", { ascending: false })
       .limit(1)
       .maybeSingle(),
-    db.from("garmin_daily_health").select("*").eq("date", endDate).maybeSingle(),
-    db.from("garmin_sleep").select("*").eq("date", endDate).maybeSingle(),
-    db.from("garmin_hrv").select("*").eq("date", endDate).maybeSingle(),
-    db.from("garmin_training_readiness").select("*").eq("date", endDate).maybeSingle(),
+    db.from("garmin_daily_health").select("*").eq("user_id", userId).eq("date", endDate).maybeSingle(),
+    db.from("garmin_sleep").select("*").eq("user_id", userId).eq("date", endDate).maybeSingle(),
+    db.from("garmin_hrv").select("*").eq("user_id", userId).eq("date", endDate).maybeSingle(),
+    db.from("garmin_training_readiness").select("*").eq("user_id", userId).eq("date", endDate).maybeSingle(),
     healthRangePromise,
     db
       .from("garmin_daily_health")
       .select("date, total_steps, step_goal, active_calories, total_calories")
+      .eq("user_id", userId)
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date", { ascending: true }),
     db
       .from("garmin_sleep")
       .select("date, total_sleep_seconds, sleep_score")
+      .eq("user_id", userId)
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date", { ascending: true }),
@@ -142,6 +147,7 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
       .select(
         "id, user_id, activity_id, date, activity_type, name, duration_seconds, calories, distance_meters"
       )
+      .eq("user_id", userId)
       .gte("date", startDate)
       .lte("date", endDate)
       .order("date", { ascending: true }),
@@ -151,12 +157,12 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved)
   const rpcRows = totalsRangeResults.map((r) => r.data?.[0] as DailyTotals | undefined)
   const displayTotals: DailyTotals =
     numDays > 1 ? averageDailyTotals(rpcRows) : (totalsRes.data?.[0] as DailyTotals | undefined) ?? {
- total_calories: 0,
-        total_protein: 0,
-        total_carbs: 0,
-        total_fat: 0,
-        entry_count: 0,
-      }
+      total_calories: 0,
+      total_protein: 0,
+      total_carbs: 0,
+      total_fat: 0,
+      entry_count: 0,
+    }
 
   const fiberSum = (fiberRes.data ?? []).reduce(
     (s: number, r: { fiber_g: number }) => s + (r.fiber_g ?? 0),
@@ -223,6 +229,13 @@ async function fetchInbodyMeasurements(): Promise<InbodyMeasurement[]> {
 }
 
 export default async function DashboardPage({ searchParams }: PageProps) {
+  const cookieStore = await cookies()
+  const userId = cookieStore.get("ft_userId")?.value
+
+  if (!userId) {
+    redirect("/select-user")
+  }
+
   const params = await searchParams
   const mode = parseDashboardMode(params.mode)
 
@@ -238,7 +251,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const anchorDate = params.date || format(subDays(new Date(), 1), "yyyy-MM-dd")
   const range = resolveDashboardRange(anchorDate, mode)
 
-  const data = await fetchDashboardData(mode, range)
+  const data = await fetchDashboardData(mode, range, userId)
 
   const rangeLabel =
     mode === "weekly" ? "Promedio semanal" : mode === "monthly" ? "Promedio mensual" : null

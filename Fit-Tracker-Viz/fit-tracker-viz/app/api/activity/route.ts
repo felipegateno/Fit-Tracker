@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import { createServerClient } from "@/lib/supabase"
 import { today, lastDayOfMonthISO } from "@/lib/utils"
 
@@ -7,6 +8,9 @@ export async function GET(req: NextRequest) {
   const date = searchParams.get("date") || today()
   const days = searchParams.get("days") ? parseInt(searchParams.get("days")!) : null
   const type = searchParams.get("type") // "steps" | "activities" | "calendar"
+
+  const cookieStore = await cookies()
+  const userId = searchParams.get("userId") ?? cookieStore.get("ft_userId")?.value ?? ""
 
   const db = createServerClient()
 
@@ -18,6 +22,7 @@ export async function GET(req: NextRequest) {
       .select(
         "id, date, activity_type, name, duration_seconds, calories, distance_meters"
       )
+      .eq("user_id", userId)
       .gte("date", month + "-01")
       .lte("date", lastDay)
       .order("date", { ascending: true })
@@ -36,6 +41,7 @@ export async function GET(req: NextRequest) {
       .select(
         "date, total_steps, step_goal, active_calories, total_calories, resting_hr, avg_stress, body_battery_highest, body_battery_lowest"
       )
+      .eq("user_id", userId)
       .gte("date", startISO)
       .lte("date", date)
       .order("date", { ascending: true })
@@ -47,6 +53,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await db
     .from("garmin_daily_health")
     .select("*")
+    .eq("user_id", userId)
     .eq("date", date)
     .maybeSingle()
 

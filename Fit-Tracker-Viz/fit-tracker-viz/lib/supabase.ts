@@ -17,5 +17,3 @@ export function createServerClient() {
   })
 }
 
-// NutriBot user ID (Telegram)
-export const NUTRIBOT_USER_ID = "8254792740"
