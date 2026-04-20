@@ -65,24 +65,26 @@ const REGION_META: Record<
   },
 }
 
-/** Prototype-matching paths in 260×300 viewBox */
+/** Anatomical paths in 260×430 viewBox */
 const ZONE_PATHS: Record<InbodySegmentRegion, string> = {
   arm_right:
-    "M 82 50 C 66 58 48 86 50 114 C 52 136 64 150 76 156 C 80 128 82 102 82 74 Z",
+    "M 68 78 C 44 86 18 112 16 146 C 14 174 28 198 46 208 C 52 176 56 142 58 108 Z",
   arm_left:
-    "M 178 50 C 194 58 212 86 210 114 C 208 136 196 150 184 156 C 178 128 178 102 178 74 Z",
+    "M 192 78 C 216 86 242 112 244 146 C 246 174 232 198 214 208 C 208 176 204 142 202 108 Z",
   torso:
-    "M 82 50 C 80 68 78 94 82 122 C 84 136 90 148 96 154 L 164 154 C 170 148 176 136 178 122 C 182 94 180 68 178 50 Z",
-  leg_right: "M 96 154 L 124 154 L 122 220 L 118 276 L 102 276 L 96 220 Z",
-  leg_left: "M 136 154 L 164 154 L 164 220 L 158 276 L 142 276 L 138 220 Z",
+    "M 68 78 C 60 116 58 156 62 188 L 74 210 L 186 210 L 198 188 C 202 156 200 116 192 78 Z",
+  leg_right:
+    "M 74 210 C 68 234 64 266 66 298 C 68 320 72 344 70 374 L 74 420 L 102 420 L 108 374 C 108 344 110 320 112 298 C 114 266 110 234 104 210 Z",
+  leg_left:
+    "M 156 210 C 150 234 146 266 148 298 C 150 320 152 344 152 374 L 158 420 L 186 420 L 190 374 C 188 344 192 320 192 298 C 196 266 192 234 186 210 Z",
 }
 
 const ZONE_ANCHOR: Record<InbodySegmentRegion, { x: number; y: number; side: "left" | "right" }> = {
-  arm_right: { x: 50, y: 100, side: "left" },
-  arm_left: { x: 210, y: 100, side: "right" },
-  torso: { x: 178, y: 108, side: "right" },
-  leg_right: { x: 96, y: 215, side: "left" },
-  leg_left: { x: 164, y: 215, side: "right" },
+  arm_right: { x: 28, y: 152, side: "left" },
+  arm_left: { x: 232, y: 152, side: "right" },
+  torso: { x: 198, y: 140, side: "right" },
+  leg_right: { x: 64, y: 300, side: "left" },
+  leg_left: { x: 196, y: 300, side: "right" },
 }
 
 function getVal(
@@ -214,24 +216,62 @@ export default function SegmentalBalance({ chronological }: Props) {
         style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
       >
         <svg
-          viewBox="0 0 260 300"
-          style={{ width: "100%", maxWidth: 220, height: "auto", display: "block" }}
+          viewBox="0 0 260 430"
+          overflow="visible"
+          style={{ width: "100%", maxWidth: 190, height: "auto", display: "block" }}
           aria-label="Silueta corporal interactiva"
         >
-          {/* ghost head + neck */}
+          {/* Head */}
           <circle
             cx="130"
-            cy="22"
-            r="18"
-            fill="#1c2538"
+            cy="34"
+            r="26"
+            fill="#1a2236"
             stroke="rgba(255,255,255,0.1)"
             strokeWidth="1"
           />
+          {/* Hair line suggestion */}
           <path
-            d="M 122 38 L 138 38 L 137 50 L 123 50 Z"
-            fill="#1c2538"
-            stroke="rgba(255,255,255,0.08)"
-            strokeWidth="0.5"
+            d="M 107 20 Q 130 10 153 20"
+            fill="none"
+            stroke="rgba(255,255,255,0.06)"
+            strokeWidth="2"
+          />
+
+          {/* Neck */}
+          <path
+            d="M 120 58 L 140 58 L 137 78 L 123 78 Z"
+            fill="#1a2236"
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth="0.8"
+          />
+
+          {/* Forearms (non-interactive) */}
+          <path
+            d="M 46 208 C 38 222 34 248 38 270 C 43 254 46 232 48 216 Z"
+            fill="#1a2236"
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth="0.8"
+          />
+          <path
+            d="M 214 208 C 222 222 226 248 222 270 C 217 254 214 232 212 216 Z"
+            fill="#1a2236"
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth="0.8"
+          />
+
+          {/* Feet (non-interactive) */}
+          <path
+            d="M 66 420 L 108 420 L 112 430 L 62 430 Z"
+            fill="#1a2236"
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth="0.8"
+          />
+          <path
+            d="M 152 420 L 194 420 L 198 430 L 148 430 Z"
+            fill="#1a2236"
+            stroke="rgba(255,255,255,0.07)"
+            strokeWidth="0.8"
           />
 
           {/* ghost zone backgrounds */}
@@ -239,11 +279,32 @@ export default function SegmentalBalance({ chronological }: Props) {
             <path
               key={`bg-${z}`}
               d={ZONE_PATHS[z]}
-              fill="#1c2538"
+              fill="#1a2236"
               stroke="rgba(255,255,255,0.08)"
               strokeWidth="1"
             />
           ))}
+
+          {/* Decorative muscle definition (non-interactive) */}
+          {/* Chest midline */}
+          <line x1="130" y1="86" x2="130" y2="118" stroke="rgba(255,255,255,0.055)" strokeWidth="0.8" />
+          {/* Left pec arc */}
+          <path d="M 74 86 Q 106 104 130 118" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.8" />
+          {/* Right pec arc */}
+          <path d="M 186 86 Q 154 104 130 118" fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="0.8" />
+          {/* Ab rows */}
+          <line x1="112" y1="128" x2="128" y2="130" stroke="rgba(255,255,255,0.04)" strokeWidth="0.7" />
+          <line x1="132" y1="130" x2="148" y2="128" stroke="rgba(255,255,255,0.04)" strokeWidth="0.7" />
+          <line x1="110" y1="144" x2="128" y2="146" stroke="rgba(255,255,255,0.04)" strokeWidth="0.7" />
+          <line x1="132" y1="146" x2="150" y2="144" stroke="rgba(255,255,255,0.04)" strokeWidth="0.7" />
+          <line x1="110" y1="160" x2="128" y2="162" stroke="rgba(255,255,255,0.04)" strokeWidth="0.7" />
+          <line x1="132" y1="162" x2="150" y2="160" stroke="rgba(255,255,255,0.04)" strokeWidth="0.7" />
+          {/* Knee outlines */}
+          <ellipse cx="89" cy="300" rx="14" ry="8" fill="none" stroke="rgba(255,255,255,0.055)" strokeWidth="0.8" />
+          <ellipse cx="171" cy="300" rx="14" ry="8" fill="none" stroke="rgba(255,255,255,0.055)" strokeWidth="0.8" />
+          {/* Calf separation */}
+          <line x1="89" y1="312" x2="89" y2="370" stroke="rgba(255,255,255,0.035)" strokeWidth="0.7" />
+          <line x1="171" y1="312" x2="171" y2="370" stroke="rgba(255,255,255,0.035)" strokeWidth="0.7" />
 
           {/* heat fills */}
           {regions.map((z) => {
@@ -299,8 +360,8 @@ export default function SegmentalBalance({ chronological }: Props) {
                   ? delta >= 0
                   : delta <= 0
                 : null
-            const lx = side === "left" ? x - 14 : x + 14
-            const ex = side === "left" ? lx - 38 : lx + 38
+            const lx = side === "left" ? x - 10 : x + 10
+            const ex = side === "left" ? lx - 32 : lx + 32
             const ta = side === "left" ? "end" : "start"
             const lc = active ? "white" : "#64748B"
             const parts = REGION_META[z].short.split(" ")
@@ -369,13 +430,13 @@ export default function SegmentalBalance({ chronological }: Props) {
               <stop offset="100%" stopColor={baseHex} stopOpacity="1" />
             </linearGradient>
           </defs>
-          <rect x="90" y="290" width="80" height="5" rx="2.5" fill="url(#sg_scale)" />
-          <text x="90" y="300" fill="#64748B" fontSize="6.5" fontFamily="Space Grotesk,sans-serif">
+          <rect x="90" y="418" width="80" height="5" rx="2.5" fill="url(#sg_scale)" />
+          <text x="90" y="428" fill="#64748B" fontSize="6.5" fontFamily="Space Grotesk,sans-serif">
             min
           </text>
           <text
             x="170"
-            y="300"
+            y="428"
             fill="#64748B"
             fontSize="6.5"
             textAnchor="end"

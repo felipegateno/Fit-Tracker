@@ -3,6 +3,7 @@ import InbodyHistoryTable from "@/components/InbodyHistoryTable"
 import InbodyKpiGrid from "@/components/InbodyKpiGrid"
 import InbodyMetabolicGrid from "@/components/InbodyMetabolicGrid"
 import InbodyScoreCard from "@/components/InbodyScoreCard"
+import InbodyTrendChart from "@/components/InbodyTrendChart"
 import SegmentalBalance from "@/components/SegmentalBalance"
 import { formatShortDate } from "@/lib/utils"
 import type { InbodyMeasurement } from "@/types"
@@ -43,6 +44,7 @@ export default function InbodyPanel({ measurements }: Props) {
       <InbodyKpiGrid chronological={chronological} />
       <InbodyScoreCard latest={latest} prev={prev} />
       <BodyCompositionBar latest={latest} prev={prev} />
+      <InbodyTrendChart chronological={chronological} />
       <SegmentalBalance chronological={chronological} />
       <InbodyMetabolicGrid chronological={chronological} />
       <InbodyHistoryTable chronological={chronological} />
