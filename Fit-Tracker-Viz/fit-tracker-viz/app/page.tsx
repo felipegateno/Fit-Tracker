@@ -229,7 +229,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   if (mode === "inbody") {
     const measurements = await fetchInbodyMeasurements()
     return (
-      <div className="space-y-6 pt-2">
+      <div className="space-y-4 pt-2 pb-6">
         <InbodyPanel measurements={measurements} />
       </div>
     )
@@ -245,10 +245,17 @@ export default async function DashboardPage({ searchParams }: PageProps) {
 
   return (
     <>
-      <Suspense fallback={<div className="h-12 border-b border-gray-800 max-w-[480px] mx-auto" />}>
+      <Suspense
+        fallback={
+          <div
+            className="h-12 border-b"
+            style={{ borderColor: "var(--ft-border)", background: "var(--ft-nav)" }}
+          />
+        }
+      >
         <DateSelector />
       </Suspense>
-      <div className="space-y-6 pt-2">
+      <div className="space-y-4 pt-2 pb-6">
         <KpiGrid
           totals={data.totals}
           goals={data.goals}

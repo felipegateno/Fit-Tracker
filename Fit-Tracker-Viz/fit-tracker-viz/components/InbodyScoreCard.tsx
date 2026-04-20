@@ -22,28 +22,50 @@ export default function InbodyScoreCard({ latest, prev }: Props) {
   const barColor = score != null ? scoreColor(Number(score)) : "#4b5563"
 
   return (
-    <section className="px-4 space-y-3">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Puntuación InBody</h2>
-      <div className="bg-gray-900 rounded-xl p-5 flex flex-col items-center gap-3">
+    <section className="px-3.5 space-y-2">
+      <h2
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--ft-sub)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
+        Puntuación InBody
+      </h2>
+      <div
+        className="rounded-2xl p-5 flex flex-col items-center gap-3"
+        style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+      >
         <span
-          className="text-5xl font-bold tabular-nums"
-          style={{ color: score != null ? barColor : "#9ca3af" }}
+          className="font-bold tabular-nums"
+          style={{ fontSize: 48, color: score != null ? barColor : "var(--ft-sub)" }}
         >
           {score != null ? Math.round(Number(score)) : "—"}
         </span>
         {dPrev != null && (
-          <span className="text-sm font-medium tabular-nums" style={{ color: inbodyDeltaColor(tone) }}>
+          <span
+            className="text-sm font-medium tabular-nums"
+            style={{ color: inbodyDeltaColor(tone) }}
+          >
             vs anterior: {formatSignedDelta(dPrev, "pts")}
           </span>
         )}
         <div className="w-full space-y-1">
-          <div className="h-3 bg-gray-800 rounded-full overflow-hidden w-full">
+          <div
+            className="h-3 rounded-full overflow-hidden w-full"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          >
             <div
               className="h-full rounded-full transition-all"
               style={{ width: `${pct}%`, backgroundColor: barColor }}
             />
           </div>
-          <div className="flex justify-between text-[10px] text-gray-500 uppercase tracking-wide">
+          <div
+            className="flex justify-between uppercase tracking-wide"
+            style={{ fontSize: 10, color: "var(--ft-sub)" }}
+          >
             <span>0</span>
             <span>100</span>
           </div>

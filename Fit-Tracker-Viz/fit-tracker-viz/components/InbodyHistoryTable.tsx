@@ -9,28 +9,43 @@ export default function InbodyHistoryTable({ chronological }: Props) {
   const rows = [...chronological].reverse()
 
   return (
-    <section className="px-4 space-y-2 pb-2">
-      <details className="group rounded-xl border border-gray-800 bg-gray-900/50">
-        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-300 flex items-center justify-between">
+    <section className="px-3.5 space-y-2 pb-2">
+      <details
+        className="group rounded-2xl"
+        style={{ border: "1px solid var(--ft-border)", background: "var(--ft-card)" }}
+      >
+        <summary
+          className="cursor-pointer list-none px-4 py-3 flex items-center justify-between"
+          style={{ fontSize: 13, fontWeight: 500, color: "var(--ft-sub2)" }}
+        >
           Ver historial completo
-          <span className="text-gray-500 group-open:rotate-180 transition-transform text-xs">▼</span>
+          <span
+            className="group-open:rotate-180 transition-transform"
+            style={{ fontSize: 10, color: "var(--ft-sub)" }}
+          >
+            ▼
+          </span>
         </summary>
         <div className="overflow-x-auto px-2 pb-3">
-          <table className="w-full text-left text-xs text-gray-400 min-w-[420px]">
+          <table className="w-full text-left min-w-[420px]" style={{ fontSize: 12, color: "var(--ft-sub2)" }}>
             <thead>
-              <tr className="border-b border-gray-800 text-[10px] uppercase tracking-wide text-gray-500">
-                <th className="py-2 px-2 font-medium">Fecha</th>
-                <th className="py-2 px-2 font-medium tabular-nums">Peso</th>
-                <th className="py-2 px-2 font-medium tabular-nums">Músculo</th>
-                <th className="py-2 px-2 font-medium tabular-nums">Grasa</th>
-                <th className="py-2 px-2 font-medium tabular-nums">% Grasa</th>
-                <th className="py-2 px-2 font-medium tabular-nums">Score</th>
+              <tr style={{ borderBottom: "1px solid var(--ft-border)" }}>
+                <th className="py-2 px-2 font-medium" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ft-sub)" }}>Fecha</th>
+                <th className="py-2 px-2 font-medium tabular-nums" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ft-sub)" }}>Peso</th>
+                <th className="py-2 px-2 font-medium tabular-nums" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ft-sub)" }}>Músculo</th>
+                <th className="py-2 px-2 font-medium tabular-nums" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ft-sub)" }}>Grasa</th>
+                <th className="py-2 px-2 font-medium tabular-nums" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ft-sub)" }}>% Grasa</th>
+                <th className="py-2 px-2 font-medium tabular-nums" style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--ft-sub)" }}>Score</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-gray-800/80 hover:bg-gray-800/40">
-                  <td className="py-2 px-2 text-gray-300 whitespace-nowrap">{formatShortDate(r.fecha)}</td>
+                <tr
+                  key={r.id}
+                  style={{ borderBottom: "1px solid var(--ft-border)" }}
+                  className="hover:bg-white/[0.03]"
+                >
+                  <td className="py-2 px-2 whitespace-nowrap" style={{ color: "var(--ft-text)" }}>{formatShortDate(r.fecha)}</td>
                   <td className="py-2 px-2 tabular-nums">{r.peso ?? "—"}</td>
                   <td className="py-2 px-2 tabular-nums">{r.masa_muscular ?? "—"}</td>
                   <td className="py-2 px-2 tabular-nums">{r.masa_grasa ?? "—"}</td>

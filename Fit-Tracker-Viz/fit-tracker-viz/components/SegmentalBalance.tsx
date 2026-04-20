@@ -1,7 +1,6 @@
 "use client"
 
-import { Dialog, Popover } from "@base-ui/react"
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent, type MouseEvent } from "react"
+import { useCallback, useMemo, useState } from "react"
 import InbodyMiniSparkline from "@/components/InbodyMiniSparkline"
 import {
   formatDecimal,
@@ -13,14 +12,17 @@ import type { InbodyMeasurement, InbodySegmentRegion } from "@/types"
 
 type MetricMode = "muscle" | "fat"
 
-const MUSCLE_COLOR = "#1D9E75"
-const FAT_COLOR = "#EF9F27"
+const MUSCLE_COLOR = "var(--ft-green)"
+const FAT_COLOR = "var(--ft-amber)"
+const MUSCLE_HEX = "#22C55E"
+const FAT_HEX = "#F59E0B"
 const ASYMMETRY_THRESHOLD = 5
 
 const REGION_META: Record<
   InbodySegmentRegion,
   {
     label: string
+    short: string
     muscleField: keyof InbodyMeasurement
     fatField: keyof InbodyMeasurement
     pair: InbodySegmentRegion | null
@@ -28,50 +30,66 @@ const REGION_META: Record<
 > = {
   arm_left: {
     label: "Brazo izquierdo",
+    short: "Brazo Izq.",
     muscleField: "musculo_brazo_izq",
     fatField: "grasa_brazo_izq",
     pair: "arm_right",
   },
   arm_right: {
     label: "Brazo derecho",
+    short: "Brazo Der.",
     muscleField: "musculo_brazo_der",
     fatField: "grasa_brazo_der",
     pair: "arm_left",
   },
   torso: {
     label: "Tronco",
+    short: "Tronco",
     muscleField: "musculo_tronco",
     fatField: "grasa_tronco",
     pair: null,
   },
   leg_left: {
     label: "Pierna izquierda",
+    short: "Pierna Izq.",
     muscleField: "musculo_pierna_izq",
     fatField: "grasa_pierna_izq",
     pair: "leg_right",
   },
   leg_right: {
     label: "Pierna derecha",
+    short: "Pierna Der.",
     muscleField: "musculo_pierna_der",
     fatField: "grasa_pierna_der",
     pair: "leg_left",
   },
 }
 
-/** Vista frontal: brazo derecho de la persona a la izquierda del SVG. */
-const REGION_PATHS: Record<InbodySegmentRegion, string> = {
+/** Prototype-matching paths in 260×300 viewBox */
+const ZONE_PATHS: Record<InbodySegmentRegion, string> = {
   arm_right:
-    "M 52 76 C 36 82 24 108 28 142 C 32 168 44 176 54 170 C 62 128 70 100 78 86 C 72 74 62 72 52 76 Z",
+    "M 82 50 C 66 58 48 86 50 114 C 52 136 64 150 76 156 C 80 128 82 102 82 74 Z",
   arm_left:
-    "M 148 76 C 164 82 176 108 172 142 C 168 168 156 176 146 170 C 138 128 130 100 122 86 C 128 74 138 72 148 76 Z",
-  torso: "M 76 70 L 124 70 L 128 198 L 72 198 Z",
-  leg_right:
-    "M 72 196 L 98 196 L 96 310 L 90 348 L 74 344 L 76 210 Z",
-  leg_left:
-    "M 102 196 L 128 196 L 124 210 L 126 344 L 110 348 L 104 310 Z",
+    "M 178 50 C 194 58 212 86 210 114 C 208 136 196 150 184 156 C 178 128 178 102 178 74 Z",
+  torso:
+    "M 82 50 C 80 68 78 94 82 122 C 84 136 90 148 96 154 L 164 154 C 170 148 176 136 178 122 C 182 94 180 68 178 50 Z",
+  leg_right: "M 96 154 L 124 154 L 122 220 L 118 276 L 102 276 L 96 220 Z",
+  leg_left: "M 136 154 L 164 154 L 164 220 L 158 276 L 142 276 L 138 220 Z",
 }
 
-function getVal(m: InbodyMeasurement, mode: MetricMode, region: InbodySegmentRegion): number | null {
+const ZONE_ANCHOR: Record<InbodySegmentRegion, { x: number; y: number; side: "left" | "right" }> = {
+  arm_right: { x: 50, y: 100, side: "left" },
+  arm_left: { x: 210, y: 100, side: "right" },
+  torso: { x: 178, y: 108, side: "right" },
+  leg_right: { x: 96, y: 215, side: "left" },
+  leg_left: { x: 164, y: 215, side: "right" },
+}
+
+function getVal(
+  m: InbodyMeasurement,
+  mode: MetricMode,
+  region: InbodySegmentRegion
+): number | null {
   const meta = REGION_META[region]
   const key = mode === "muscle" ? meta.muscleField : meta.fatField
   const v = m[key]
@@ -84,7 +102,7 @@ function heatOpacity(value: number | null, min: number, max: number): number {
   if (value == null) return 0.35
   if (max <= min) return 0.675
   const t = (value - min) / (max - min)
-  return 0.35 + 0.65 * Math.min(1, Math.max(0, t))
+  return 0.2 + 0.8 * Math.min(1, Math.max(0, t))
 }
 
 function asymmetryPct(a: number | null, b: number | null): number | null {
@@ -97,96 +115,12 @@ interface Props {
   chronological: InbodyMeasurement[]
 }
 
-function DetailBody({
-  region,
-  mode,
-  chronological,
-  onClose,
-}: {
-  region: InbodySegmentRegion
-  mode: MetricMode
-  chronological: InbodyMeasurement[]
-  onClose: () => void
-}) {
-  const meta = REGION_META[region]
-  const field = (mode === "muscle" ? meta.muscleField : meta.fatField) as string
-  const latest = chronological[chronological.length - 1]
-  const prev = chronological.length >= 2 ? chronological[chronological.length - 2] : null
-  const current = getVal(latest, mode, region)
-  const prevVal = prev ? getVal(prev, mode, region) : null
-  const dPrev = current != null && prevVal != null ? current - prevVal : null
-  const tone = dPrev != null ? inbodyDeltaTone(field, dPrev) : "neutral"
-
-  const pairRegion = meta.pair
-  const pairVal = pairRegion ? getVal(latest, mode, pairRegion) : null
-  const asym = pairRegion ? asymmetryPct(current, pairVal) : null
-  const series = chronological.map((row) => getVal(row, mode, region))
-  const unit = "kg"
-  const metricLabel = mode === "muscle" ? "Masa muscular segmental" : "Masa grasa segmental"
-  const sparkColor = mode === "muscle" ? MUSCLE_COLOR : FAT_COLOR
-
-  return (
-    <div className="space-y-3 p-1 min-w-[240px] max-w-[min(100vw-2rem,320px)]">
-      <div>
-        <h3 className="text-base font-semibold text-white">{meta.label}</h3>
-        <p className="text-xs text-gray-500">{metricLabel}</p>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-2xl font-bold text-white tabular-nums">
-          {current != null ? formatDecimal(current, 2) : "—"}
-        </span>
-        <span className="text-sm text-gray-500">{unit}</span>
-      </div>
-      {dPrev != null && (
-        <p className="text-sm tabular-nums" style={{ color: inbodyDeltaColor(tone) }}>
-          vs anterior: {formatSignedDelta(dPrev, unit)}
-        </p>
-      )}
-      {pairRegion && current != null && pairVal != null && asym != null && (
-        <div className="rounded-lg bg-gray-800/80 p-2 space-y-1">
-          <p className="text-xs text-gray-400">
-            vs {REGION_META[pairRegion].label}: {formatDecimal(pairVal, 2)} {unit}
-          </p>
-          <p className="text-xs text-gray-500">Asimetría: {formatDecimal(asym, 1)}%</p>
-          <div className="h-1.5 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full bg-amber-400"
-              style={{ width: `${Math.min(100, asym)}%` }}
-            />
-          </div>
-        </div>
-      )}
-      <div>
-        <p className="text-[10px] text-gray-500 uppercase tracking-wide mb-1">Evolución</p>
-        <InbodyMiniSparkline values={series} color={sparkColor} />
-      </div>
-      <button
-        type="button"
-        onClick={onClose}
-        className="w-full py-2 rounded-lg bg-gray-800 text-sm font-medium text-gray-200 hover:bg-gray-700 border border-gray-700"
-      >
-        Cerrar
-      </button>
-    </div>
-  )
-}
-
 export default function SegmentalBalance({ chronological }: Props) {
   const [metric, setMetric] = useState<MetricMode>("muscle")
-  const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState<InbodySegmentRegion | null>(null)
-  const [anchorEl, setAnchorEl] = useState<Element | null>(null)
-  const [isDesktop, setIsDesktop] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)")
-    const update = () => setIsDesktop(mq.matches)
-    update()
-    mq.addEventListener("change", update)
-    return () => mq.removeEventListener("change", update)
-  }, [])
+  const [activeZone, setActiveZone] = useState<InbodySegmentRegion | null>(null)
 
   const latest = chronological[chronological.length - 1]
+  const prev = chronological.length >= 2 ? chronological[chronological.length - 2] : null
 
   const { minV, maxV } = useMemo(() => {
     if (!latest) return { minV: 0, maxV: 1 }
@@ -197,172 +131,370 @@ export default function SegmentalBalance({ chronological }: Props) {
     return { minV: Math.min(...vals), maxV: Math.max(...vals) }
   }, [latest, metric])
 
+  const baseHex = metric === "muscle" ? MUSCLE_HEX : FAT_HEX
   const baseColor = metric === "muscle" ? MUSCLE_COLOR : FAT_COLOR
 
-  const openRegion = useCallback((region: InbodySegmentRegion, el: Element) => {
-    setSelected(region)
-    setAnchorEl(el)
-    setOpen(true)
-  }, [])
-
-  const closeDetail = useCallback(() => {
-    setOpen(false)
-    setSelected(null)
-    setAnchorEl(null)
-  }, [])
-
-  const onPathClick = (region: InbodySegmentRegion) => (e: MouseEvent<SVGPathElement>) => {
-    e.stopPropagation()
-    openRegion(region, e.currentTarget)
-  }
-
-  const onPathKeyDown =
-    (region: InbodySegmentRegion) => (e: KeyboardEvent<SVGPathElement>) => {
-      if (e.key === "Enter" || e.key === " ") {
-        e.preventDefault()
-        openRegion(region, e.currentTarget)
-      }
-    }
+  const handleZone = useCallback(
+    (z: InbodySegmentRegion) => setActiveZone((p) => (p === z ? null : z)),
+    []
+  )
 
   if (!latest) return null
 
   const regions = Object.keys(REGION_META) as InbodySegmentRegion[]
 
-  const popupContent =
-    selected && (
-      <DetailBody
-        region={selected}
-        mode={metric}
-        chronological={chronological}
-        onClose={closeDetail}
-      />
-    )
+  // active zone popup data
+  const az = activeZone
+  const azVal = az ? getVal(latest, metric, az) : null
+  const azPrevVal = az && prev ? getVal(prev, metric, az) : null
+  const azDelta = azVal != null && azPrevVal != null ? azVal - azPrevVal : null
+  const azGood =
+    azDelta != null
+      ? metric === "muscle"
+        ? azDelta >= 0
+        : azDelta <= 0
+      : null
+  const azPairRegion = az ? REGION_META[az].pair : null
+  const azPairVal = azPairRegion ? getVal(latest, metric, azPairRegion) : null
+  const azAsym = azPairRegion ? asymmetryPct(azVal, azPairVal) : null
+  const azField = az
+    ? (metric === "muscle" ? REGION_META[az].muscleField : REGION_META[az].fatField) as string
+    : null
+  const azTone = azDelta != null && azField ? inbodyDeltaTone(azField, azDelta) : "neutral"
+  const azSeries = az ? chronological.map((r) => getVal(r, metric, az)) : []
 
   return (
-    <section className="px-4 space-y-3">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Balance segmental</h2>
-      <p className="text-xs text-gray-500 -mt-1">Toca una zona del cuerpo para ver detalle.</p>
+    <section className="px-3.5 space-y-2.5">
+      <h2
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--ft-sub)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
+        Balance segmental
+      </h2>
 
-      <div className="flex gap-1 p-1 bg-gray-900 rounded-full max-w-[280px]">
-        <button
-          type="button"
-          onClick={() => setMetric("muscle")}
-          className={`flex-1 py-1.5 rounded-full text-xs font-medium transition-colors ${
-            metric === "muscle" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          Músculo
-        </button>
-        <button
-          type="button"
-          onClick={() => setMetric("fat")}
-          className={`flex-1 py-1.5 rounded-full text-xs font-medium transition-colors ${
-            metric === "fat" ? "bg-indigo-600 text-white" : "text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          Grasa
-        </button>
+      {/* Metric toggle */}
+      <div
+        className="flex max-w-[280px] p-0.5 rounded-xl"
+        style={{ background: "rgba(255,255,255,0.05)" }}
+      >
+        {(["muscle", "fat"] as MetricMode[]).map((id) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              setMetric(id)
+              setActiveZone(null)
+            }}
+            className="flex-1 py-1.5 rounded-[10px] text-xs font-semibold transition-all"
+            style={{
+              background:
+                metric === id
+                  ? id === "muscle"
+                    ? MUSCLE_HEX
+                    : FAT_HEX
+                  : "transparent",
+              color: metric === id ? "#0B0F1C" : "var(--ft-sub)",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            {id === "muscle" ? "Músculo" : "Grasa"}
+          </button>
+        ))}
       </div>
 
-      <div className="bg-gray-900 rounded-xl p-4 flex flex-col items-center">
+      {/* Body SVG card */}
+      <div
+        className="rounded-2xl p-4 flex justify-center"
+        style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+      >
         <svg
-          viewBox="0 0 200 360"
-          className="w-full max-w-[220px] h-auto select-none"
+          viewBox="0 0 260 300"
+          style={{ width: "100%", maxWidth: 220, height: "auto", display: "block" }}
           aria-label="Silueta corporal interactiva"
         >
-          <path
-            d="M 100 26 m -15 0 a 15 15 0 1 0 30 0 a 15 15 0 1 0 -30 0"
-            fill="#374151"
-            pointerEvents="none"
+          {/* ghost head + neck */}
+          <circle
+            cx="130"
+            cy="22"
+            r="18"
+            fill="#1c2538"
+            stroke="rgba(255,255,255,0.1)"
+            strokeWidth="1"
           />
-          <path d="M 88 52 L 112 52 L 110 70 L 90 70 Z" fill="#374151" pointerEvents="none" />
+          <path
+            d="M 122 38 L 138 38 L 137 50 L 123 50 Z"
+            fill="#1c2538"
+            stroke="rgba(255,255,255,0.08)"
+            strokeWidth="0.5"
+          />
 
-          {regions.map((region) => {
-            const v = getVal(latest, metric, region)
-            const opacity = heatOpacity(v, minV, maxV)
-            const meta = REGION_META[region]
-            const pair = meta.pair
-            let alertStroke = "none"
-            if (pair) {
-              const pv = getVal(latest, metric, pair)
-              const asym = asymmetryPct(v, pv)
-              if (asym != null && asym > ASYMMETRY_THRESHOLD) alertStroke = "#fbbf24"
-            }
-            const label = `${meta.label}${v != null ? `, ${formatDecimal(v, 2)} kg` : ""}`
+          {/* ghost zone backgrounds */}
+          {regions.map((z) => (
+            <path
+              key={`bg-${z}`}
+              d={ZONE_PATHS[z]}
+              fill="#1c2538"
+              stroke="rgba(255,255,255,0.08)"
+              strokeWidth="1"
+            />
+          ))}
+
+          {/* heat fills */}
+          {regions.map((z) => {
+            const active = activeZone === z
+            const v = getVal(latest, metric, z)
+            const pv = prev ? getVal(prev, metric, z) : null
+            const delta = pv != null && v != null ? v - pv : null
+            const good =
+              delta != null
+                ? metric === "muscle"
+                  ? delta >= 0
+                  : delta <= 0
+                : null
+            const asym = REGION_META[z].pair
+              ? asymmetryPct(v, REGION_META[z].pair ? getVal(latest, metric, REGION_META[z].pair!) : null)
+              : null
+            const alertBorder = asym != null && asym > ASYMMETRY_THRESHOLD
+
             return (
               <path
-                key={region}
-                d={REGION_PATHS[region]}
-                fill={baseColor}
-                fillOpacity={opacity}
-                stroke={alertStroke}
-                strokeWidth={alertStroke !== "none" ? 1.5 : 0}
-                className="cursor-pointer hover:stroke-white hover:stroke-2 transition-[stroke]"
-                role="button"
-                tabIndex={0}
-                aria-label={label}
-                onClick={onPathClick(region)}
-                onKeyDown={onPathKeyDown(region)}
+                key={z}
+                d={ZONE_PATHS[z]}
+                fill={baseHex}
+                fillOpacity={heatOpacity(v, minV, maxV)}
+                stroke={
+                  active
+                    ? "white"
+                    : alertBorder
+                      ? FAT_HEX
+                      : good === true
+                        ? MUSCLE_HEX
+                        : good === false
+                          ? "#F87171"
+                          : "transparent"
+                }
+                strokeWidth={active ? 1.5 : good != null || alertBorder ? 0.8 : 0}
+                style={{ cursor: "pointer" }}
+                onClick={() => handleZone(z)}
               />
             )
           })}
-        </svg>
 
-        <div className="mt-4 w-full flex items-center gap-2 text-[10px] text-gray-500">
-          <span className="shrink-0">menor</span>
-          <div
-            className="flex-1 h-2 rounded-full"
-            style={{
-              background: `linear-gradient(90deg, ${baseColor}55, ${baseColor})`,
-            }}
-          />
-          <span className="shrink-0">mayor</span>
-        </div>
-        <p className="text-[10px] text-amber-400/90 mt-2 text-center">
-          Borde ámbar: asimetría &gt; {ASYMMETRY_THRESHOLD}%
-        </p>
+          {/* Leader lines + labels */}
+          {regions.map((z) => {
+            const { x, y, side } = ZONE_ANCHOR[z]
+            const active = activeZone === z
+            const v = getVal(latest, metric, z)
+            const pv = prev ? getVal(prev, metric, z) : null
+            const delta = pv != null && v != null ? v - pv : null
+            const good =
+              delta != null
+                ? metric === "muscle"
+                  ? delta >= 0
+                  : delta <= 0
+                : null
+            const lx = side === "left" ? x - 14 : x + 14
+            const ex = side === "left" ? lx - 38 : lx + 38
+            const ta = side === "left" ? "end" : "start"
+            const lc = active ? "white" : "#64748B"
+            const parts = REGION_META[z].short.split(" ")
+
+            return (
+              <g key={`lbl-${z}`} onClick={() => handleZone(z)} style={{ cursor: "pointer" }}>
+                <line
+                  x1={x}
+                  y1={y}
+                  x2={lx}
+                  y2={y}
+                  stroke={active ? "white" : "rgba(255,255,255,0.2)"}
+                  strokeWidth={active ? 1.2 : 0.8}
+                />
+                <line
+                  x1={lx}
+                  y1={y}
+                  x2={ex}
+                  y2={y}
+                  stroke={active ? "white" : "rgba(255,255,255,0.2)"}
+                  strokeWidth={active ? 1.2 : 0.8}
+                />
+                <text
+                  x={ex + (side === "left" ? -3 : 3)}
+                  y={y - 5}
+                  textAnchor={ta}
+                  fontSize="7.5"
+                  fill={lc}
+                  fontFamily="Space Grotesk,sans-serif"
+                  fontWeight={active ? "700" : "500"}
+                >
+                  {parts[0]} {parts[1] ?? ""}
+                </text>
+                <text
+                  x={ex + (side === "left" ? -3 : 3)}
+                  y={y + 7}
+                  textAnchor={ta}
+                  fontSize="8"
+                  fill={active ? baseHex : "#94A3B8"}
+                  fontFamily="Space Grotesk,sans-serif"
+                  fontWeight="600"
+                >
+                  {v != null ? `${v.toFixed(2)}kg` : "—"}
+                </text>
+                {delta != null && (
+                  <text
+                    x={ex + (side === "left" ? -3 : 3)}
+                    y={y + 17}
+                    textAnchor={ta}
+                    fontSize="6.5"
+                    fill={good ? MUSCLE_HEX : "#F87171"}
+                    fontFamily="Space Grotesk,sans-serif"
+                  >
+                    {delta >= 0 ? "▲" : "▼"}
+                    {Math.abs(delta).toFixed(2)}
+                  </text>
+                )}
+              </g>
+            )
+          })}
+
+          {/* Scale gradient */}
+          <defs>
+            <linearGradient id="sg_scale" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stopColor={baseHex} stopOpacity="0.15" />
+              <stop offset="100%" stopColor={baseHex} stopOpacity="1" />
+            </linearGradient>
+          </defs>
+          <rect x="90" y="290" width="80" height="5" rx="2.5" fill="url(#sg_scale)" />
+          <text x="90" y="300" fill="#64748B" fontSize="6.5" fontFamily="Space Grotesk,sans-serif">
+            min
+          </text>
+          <text
+            x="170"
+            y="300"
+            fill="#64748B"
+            fontSize="6.5"
+            textAnchor="end"
+            fontFamily="Space Grotesk,sans-serif"
+          >
+            max
+          </text>
+        </svg>
       </div>
 
-      {isDesktop === true ? (
-        <Popover.Root
-          open={open && selected != null}
-          onOpenChange={(next) => {
-            if (!next) closeDetail()
+      {/* Active zone popup */}
+      {az && azVal != null && (
+        <div
+          className="rounded-2xl p-3"
+          style={{
+            background: "rgba(255,255,255,0.04)",
+            border: `1px solid ${baseHex}33`,
           }}
-          modal={false}
         >
-          <Popover.Portal>
-            <Popover.Positioner
-              side="top"
-              align="center"
-              sideOffset={8}
-              anchor={anchorEl ? () => anchorEl : null}
+          <div className="flex justify-between items-center mb-2">
+            <div>
+              <div
+                className="font-semibold"
+                style={{ fontSize: 13, color: "var(--ft-text)" }}
+              >
+                {REGION_META[az].label}
+              </div>
+              <div style={{ fontSize: 10, color: "var(--ft-sub)" }}>
+                {metric === "muscle" ? "Masa muscular" : "Masa grasa"}
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveZone(null)}
+              className="rounded-md px-1.5 py-0.5"
+              style={{
+                background: "rgba(255,255,255,0.07)",
+                border: "none",
+                color: "var(--ft-sub)",
+                cursor: "pointer",
+                fontSize: 11,
+              }}
             >
-              <Popover.Popup className="z-[200] rounded-xl border border-gray-700 bg-gray-900 p-3 shadow-xl outline-none">
-                <Popover.Close className="sr-only" aria-label="Cerrar" />
-                {popupContent}
-              </Popover.Popup>
-            </Popover.Positioner>
-          </Popover.Portal>
-        </Popover.Root>
-      ) : (
-        <Dialog.Root
-          open={open && selected != null}
-          onOpenChange={(next) => {
-            if (!next) closeDetail()
-          }}
-        >
-          <Dialog.Portal>
-            <Dialog.Backdrop className="fixed inset-0 z-[190] bg-black/60 backdrop-blur-sm" />
-            <Dialog.Popup className="fixed left-2 right-2 bottom-2 z-[200] rounded-xl border border-gray-700 bg-gray-900 p-4 shadow-xl outline-none sm:left-auto sm:right-auto sm:bottom-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:min-w-[300px]">
-              <Dialog.Title className="sr-only">
-                {selected ? REGION_META[selected].label : "Detalle"}
-              </Dialog.Title>
-              <Dialog.Close className="sr-only" aria-label="Cerrar diálogo" />
-              {popupContent}
-            </Dialog.Popup>
-          </Dialog.Portal>
-        </Dialog.Root>
+              ✕
+            </button>
+          </div>
+          <div
+            className="font-bold"
+            style={{ fontSize: 28, color: baseHex }}
+          >
+            {formatDecimal(azVal, 2)}
+            <span style={{ fontSize: 13, color: "var(--ft-sub)" }}> kg</span>
+          </div>
+          {azDelta != null && (
+            <div
+              style={{
+                fontSize: 12,
+                marginTop: 4,
+                color: inbodyDeltaColor(azTone),
+              }}
+            >
+              {formatSignedDelta(azDelta, "kg")} vs anterior
+            </div>
+          )}
+          {azAsym != null && (
+            <>
+              <div style={{ fontSize: 10, color: "var(--ft-sub)", marginTop: 8, marginBottom: 3 }}>
+                Asimetría vs par:{" "}
+                <span
+                  style={{
+                    color: azAsym > ASYMMETRY_THRESHOLD ? "var(--ft-amber)" : "var(--ft-green)",
+                    fontWeight: 600,
+                  }}
+                >
+                  {azAsym.toFixed(1)}%
+                </span>
+              </div>
+              <div
+                style={{
+                  height: 4,
+                  background: "rgba(255,255,255,0.06)",
+                  borderRadius: 2,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${Math.min(100, azAsym * 5)}%`,
+                    height: "100%",
+                    background:
+                      azAsym > ASYMMETRY_THRESHOLD ? "var(--ft-amber)" : "var(--ft-green)",
+                    borderRadius: 2,
+                  }}
+                />
+              </div>
+            </>
+          )}
+          {azSeries.length > 1 && (
+            <div className="mt-3">
+              <div
+                style={{
+                  fontSize: 9,
+                  color: "var(--ft-sub)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  marginBottom: 4,
+                }}
+              >
+                Evolución
+              </div>
+              <InbodyMiniSparkline values={azSeries} color={baseHex} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {!activeZone && (
+        <p style={{ fontSize: 11, color: "var(--ft-sub)" }}>
+          Toca una zona para ver detalle
+        </p>
       )}
     </section>
   )

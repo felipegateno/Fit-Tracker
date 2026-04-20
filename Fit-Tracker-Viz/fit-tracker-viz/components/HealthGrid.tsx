@@ -24,23 +24,42 @@ function MetricCard({
   color?: string
 }) {
   return (
-    <div className="bg-gray-800 rounded-xl p-3 flex flex-col gap-0.5">
-      <span className="text-xs text-gray-500 font-medium">{label}</span>
+    <div
+      className="rounded-xl p-3 flex flex-col gap-0.5"
+      style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+    >
+      <span
+        style={{
+          fontSize: 9,
+          color: "var(--ft-sub)",
+          letterSpacing: "0.05em",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </span>
       <div className="flex items-baseline gap-1">
-        <span className="text-xl font-bold" style={color ? { color } : { color: "#f3f4f6" }}>
+        <span
+          className="font-bold"
+          style={{ fontSize: 20, color: color ?? "var(--ft-text)" }}
+        >
           {value}
         </span>
-        {unit && <span className="text-xs text-gray-500">{unit}</span>}
+        {unit && (
+          <span style={{ fontSize: 10, color: "var(--ft-sub)" }}>{unit}</span>
+        )}
       </div>
-      {sub && <span className="text-xs text-gray-600">{sub}</span>}
+      {sub && (
+        <span style={{ fontSize: 10, color: "var(--ft-sub)" }}>{sub}</span>
+      )}
     </div>
   )
 }
 
 function readinessColor(score: number): string {
-  if (score >= 70) return "#1D9E75"
-  if (score >= 40) return "#EF9F27"
-  return "#D85A30"
+  if (score >= 70) return "var(--ft-green)"
+  if (score >= 40) return "var(--ft-amber)"
+  return "var(--ft-red)"
 }
 
 function hrvStatusLabel(status: string | null): string {
@@ -80,10 +99,22 @@ export default function HealthGrid({ health, sleep, hrv, readiness, healthRange,
     mode === "weekly" ? "promedio semanal (intensidad: total)" : mode === "monthly" ? "promedio mensual (intensidad: total)" : undefined
 
   return (
-    <section className="px-4 space-y-3">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Salud Garmin</h2>
-      {rangeSub && <p className="text-xs text-gray-500 -mt-1">{rangeSub}</p>}
-      <div className="bg-gray-900 rounded-xl p-4">
+    <section className="px-3.5 space-y-2.5">
+      <h2
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--ft-sub)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
+        Salud Garmin
+      </h2>
+      {rangeSub && (
+        <p style={{ fontSize: 11, color: "var(--ft-sub)", marginTop: -6 }}>{rangeSub}</p>
+      )}
+      <div>
         <div className="grid grid-cols-3 gap-2">
           <MetricCard
             label="FC reposo"
@@ -95,7 +126,7 @@ export default function HealthGrid({ health, sleep, hrv, readiness, healthRange,
             value={bbHigh ?? "—"}
             unit={bbHigh != null ? "max" : undefined}
             sub={bbLow != null ? `mín ${bbLow}` : undefined}
-            color={bbHigh != null ? (bbHigh >= 50 ? "#1D9E75" : "#EF9F27") : undefined}
+            color={bbHigh != null ? (bbHigh >= 50 ? "var(--ft-green)" : "var(--ft-amber)") : undefined}
           />
           <MetricCard
             label="Estrés"
@@ -132,3 +163,4 @@ export default function HealthGrid({ health, sleep, hrv, readiness, healthRange,
     </section>
   )
 }
+

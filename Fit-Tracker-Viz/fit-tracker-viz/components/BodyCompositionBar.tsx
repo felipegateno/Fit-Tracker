@@ -1,10 +1,10 @@
 import { formatDecimal, formatSignedDelta } from "@/lib/utils"
 import type { InbodyMeasurement } from "@/types"
 
-const C_MUSCLE = "#1D9E75"
-const C_FAT = "#EF9F27"
-const C_WATER = "#378ADD"
-const C_OTHER = "#4b5563"
+const C_MUSCLE = "#22C55E"
+const C_FAT = "#F59E0B"
+const C_WATER = "#4F8EF7"
+const C_OTHER = "rgba(255,255,255,0.12)"
 
 interface Props {
   latest: InbodyMeasurement
@@ -46,10 +46,23 @@ export default function BodyCompositionBar({ latest, prev }: Props) {
   }
 
   return (
-    <section className="px-4 space-y-3">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Composición vs peso</h2>
-      <div className="bg-gray-900 rounded-xl p-4 space-y-3">
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-gray-400">
+    <section className="px-3.5 space-y-2">
+      <h2
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--ft-sub)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
+        Composición vs peso
+      </h2>
+      <div
+        className="rounded-2xl p-4 space-y-3"
+        style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+      >
+        <div className="flex flex-wrap gap-x-3 gap-y-1" style={{ fontSize: 11, color: "var(--ft-sub2)" }}>
           <span>
             <span className="inline-block w-2 h-2 rounded-sm mr-1 align-middle" style={{ backgroundColor: C_MUSCLE }} />
             Músculo {pct(wMuscle)}%
@@ -62,22 +75,21 @@ export default function BodyCompositionBar({ latest, prev }: Props) {
             <span className="inline-block w-2 h-2 rounded-sm mr-1 align-middle" style={{ backgroundColor: C_WATER }} />
             Agua {pct(wWater)}%
           </span>
-          <span>
-            <span className="inline-block w-2 h-2 rounded-sm mr-1 align-middle" style={{ backgroundColor: C_OTHER }} />
-            Otros {pct(wOther)}%
-          </span>
         </div>
-        <div className="h-4 rounded-full overflow-hidden flex w-full bg-gray-800">
+        <div
+          className="h-4 rounded-full overflow-hidden flex w-full"
+          style={{ background: "rgba(255,255,255,0.06)" }}
+        >
           <div className="h-full" style={{ width: `${wMuscle * 100}%`, backgroundColor: C_MUSCLE }} />
           <div className="h-full" style={{ width: `${wFat * 100}%`, backgroundColor: C_FAT }} />
           <div className="h-full" style={{ width: `${wWater * 100}%`, backgroundColor: C_WATER }} />
           <div className="h-full" style={{ width: `${wOther * 100}%`, backgroundColor: C_OTHER }} />
         </div>
-        <div className="flex justify-between text-xs text-gray-500">
+        <div className="flex justify-between" style={{ fontSize: 12, color: "var(--ft-sub)" }}>
           <span>Peso {formatDecimal(peso, 2)} kg</span>
           <span>Agua {formatDecimal(latest.agua_corporal, 2)} L</span>
         </div>
-        {deltaLine && <p className="text-xs text-gray-500">vs anterior: {deltaLine}</p>}
+        {deltaLine && <p style={{ fontSize: 12, color: "var(--ft-sub)" }}>vs anterior: {deltaLine}</p>}
       </div>
     </section>
   )

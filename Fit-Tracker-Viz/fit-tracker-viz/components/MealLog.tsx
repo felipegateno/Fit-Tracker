@@ -1,8 +1,7 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { format, parseISO } from "date-fns"
-import { Coffee, Cookie, Moon, UtensilsCrossed } from "lucide-react"
 import type { FoodLogEntry } from "@/types"
 import { formatNum } from "@/lib/utils"
 
@@ -17,11 +16,11 @@ const MEAL_LABEL: Record<MealVisualKind, string> = {
   snack: "Snack",
 }
 
-const MEAL_ICON_COLOR: Record<MealVisualKind, string> = {
-  breakfast: "text-amber-400",
-  lunch: "text-emerald-400",
-  snack: "text-indigo-400",
-  dinner: "text-blue-400",
+const MEAL_COLOR: Record<MealVisualKind, string> = {
+  breakfast: "var(--ft-amber)",
+  lunch: "var(--ft-green)",
+  snack: "var(--ft-purple)",
+  dinner: "var(--ft-accent)",
 }
 
 interface MealGroup {
@@ -64,7 +63,6 @@ function clusterUnspecified(entries: FoodLogEntry[]): FoodLogEntry[][] {
 function buildGroups(entries: FoodLogEntry[]): MealGroup[] {
   const specified = entries.filter((e) => SPECIFIC.has(e.meal_type))
   const unspecified = entries.filter((e) => !SPECIFIC.has(e.meal_type))
-
   const groups: MealGroup[] = []
 
   for (const mt of ["breakfast", "lunch", "dinner", "snack"] as const) {
@@ -73,12 +71,7 @@ function buildGroups(entries: FoodLogEntry[]): MealGroup[] {
     const sorted = [...items].sort(
       (a, b) => new Date(a.logged_at).getTime() - new Date(b.logged_at).getTime()
     )
-    groups.push({
-      kind: mt,
-      label: MEAL_LABEL[mt],
-      time: sorted[0].logged_at,
-      items: sorted,
-    })
+    groups.push({ kind: mt, label: MEAL_LABEL[mt], time: sorted[0].logged_at, items: sorted })
   }
 
   for (const cluster of clusterUnspecified(unspecified)) {
@@ -87,12 +80,7 @@ function buildGroups(entries: FoodLogEntry[]): MealGroup[] {
     )
     const first = new Date(sorted[0].logged_at)
     const { label, kind } = inferUnspecifiedKind(first)
-    groups.push({
-      kind,
-      label,
-      time: sorted[0].logged_at,
-      items: sorted,
-    })
+    groups.push({ kind, label, time: sorted[0].logged_at, items: sorted })
   }
 
   return groups.sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime())
@@ -100,20 +88,6 @@ function buildGroups(entries: FoodLogEntry[]): MealGroup[] {
 
 function groupTotalKcal(items: FoodLogEntry[]): number {
   return Math.round(items.reduce((s, i) => s + Number(i.calories ?? 0), 0))
-}
-
-function MealIcon({ kind, className }: { kind: MealVisualKind; className?: string }) {
-  const cn = `${MEAL_ICON_COLOR[kind]} shrink-0 ${className ?? ""}`
-  switch (kind) {
-    case "breakfast":
-      return <Coffee className={cn} size={18} strokeWidth={2} aria-hidden />
-    case "lunch":
-      return <UtensilsCrossed className={cn} size={18} strokeWidth={2} aria-hidden />
-    case "snack":
-      return <Cookie className={cn} size={18} strokeWidth={2} aria-hidden />
-    case "dinner":
-      return <Moon className={cn} size={18} strokeWidth={2} aria-hidden />
-  }
 }
 
 function capitalizeInput(s: string): string {
@@ -127,55 +101,132 @@ interface Props {
 
 export default function MealLog({ entries }: Props) {
   const groups = useMemo(() => buildGroups(entries), [entries])
+  const [openMeal, setOpenMeal] = useState<number | null>(null)
 
   return (
-    <section className="px-4 space-y-3" aria-label="Registro de comidas">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+    <section className="px-3.5 space-y-2" aria-label="Registro de comidas">
+      <h2
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--ft-sub)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
         Registro de comidas
       </h2>
 
-      <div className="bg-gray-900 rounded-xl p-4 space-y-0">
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+      >
         {groups.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-4">Sin registros para este día</p>
+          <p className="text-sm text-center py-6" style={{ color: "var(--ft-sub)" }}>
+            Sin registros para este día
+          </p>
         ) : (
-          groups.map((g, gi) => (
-            <div
-              key={`${g.time}-${g.label}-${gi}`}
-              className={gi > 0 ? "border-t border-gray-800 pt-4 mt-4" : ""}
-            >
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <MealIcon kind={g.kind} />
-                  <span className="text-sm font-medium text-white truncate">
-                    {g.label}
-                    <span className="text-gray-500 font-normal">
-                      {" "}
-                      · {format(parseISO(g.time), "HH:mm")}
+          groups.map((g, gi) => {
+            const isOpen = openMeal === gi
+            const color = MEAL_COLOR[g.kind]
+            const kcal = groupTotalKcal(g.items)
+
+            return (
+              <div key={`${g.time}-${g.label}-${gi}`}>
+                {gi > 0 && (
+                  <div style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
+                )}
+
+                {/* Meal header — clickable */}
+                <button
+                  onClick={() => setOpenMeal(isOpen ? null : gi)}
+                  className="w-full flex items-center gap-3 px-4 py-3"
+                  style={{ background: "none", border: "none", cursor: "pointer" }}
+                >
+                  <div
+                    className="flex-shrink-0 rounded-sm"
+                    style={{ width: 10, height: 10, background: color }}
+                  />
+                  <div className="flex-1 text-left">
+                    <span
+                      className="font-semibold"
+                      style={{ fontSize: 14, color: "var(--ft-text)" }}
+                    >
+                      {g.label}
                     </span>
-                  </span>
-                </div>
-                <span className="text-sm font-semibold text-gray-300 shrink-0 tabular-nums">
-                  {formatNum(groupTotalKcal(g.items))} kcal
-                </span>
-              </div>
-              <ul className="space-y-1.5 pl-7">
-                {g.items.map((item, ii) => (
-                  <li
-                    key={`${item.logged_at}-${item.raw_input}-${ii}`}
-                    className="flex items-baseline justify-between gap-2 text-xs text-gray-400"
+                    <span style={{ fontSize: 11, color: "var(--ft-sub)" }}>
+                      {" · "}
+                      {format(parseISO(g.time), "HH:mm")}
+                    </span>
+                  </div>
+                  <span
+                    className="font-semibold flex-shrink-0"
+                    style={{ fontSize: 13, color: "var(--ft-sub2)" }}
                   >
-                    <span className="text-gray-300 min-w-0 truncate">
-                      {capitalizeInput(item.raw_input)}
-                    </span>
-                    <span className="shrink-0 tabular-nums text-gray-500">
-                      {formatNum(Number(item.quantity_g))} g · {formatNum(Number(item.calories))}{" "}
-                      kcal
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))
+                    {kcal} kcal
+                  </span>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    style={{
+                      color: "var(--ft-sub)",
+                      transform: isOpen ? "rotate(90deg)" : "none",
+                      transition: "transform 0.2s",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <path
+                      d="M5 3l4 4-4 4"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+
+                {/* Items — expanded */}
+                {isOpen && (
+                  <div style={{ paddingLeft: 38, paddingRight: 16, paddingBottom: 12 }}>
+                    {g.items.map((item, ii) => (
+                      <div
+                        key={`${item.logged_at}-${item.raw_input}-${ii}`}
+                        className="flex items-baseline justify-between gap-2 py-0.5"
+                        style={{
+                          fontSize: 12,
+                          paddingLeft: 10,
+                          borderLeft: `2px solid ${color}44`,
+                          marginBottom: 2,
+                        }}
+                      >
+                        <span
+                          style={{
+                            color: "var(--ft-sub2)",
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {capitalizeInput(item.raw_input)}{" "}
+                          <span style={{ color: "var(--ft-sub)" }}>
+                            {formatNum(Number(item.quantity_g))}g
+                          </span>
+                        </span>
+                        <span
+                          className="flex-shrink-0 font-semibold"
+                          style={{ color: "var(--ft-sub2)", marginLeft: 8 }}
+                        >
+                          {formatNum(Number(item.calories))} kcal
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })
         )}
       </div>
     </section>

@@ -7,8 +7,8 @@ import {
 } from "@/lib/utils"
 import type { InbodyMeasurement } from "@/types"
 
-const WATER_COLOR = "#378ADD"
-const TMB_COLOR = "#D85A30"
+const WATER_COLOR = "#4F8EF7"
+const TMB_COLOR = "#F59E0B"
 
 interface Props {
   chronological: InbodyMeasurement[]
@@ -38,18 +38,30 @@ export default function InbodyMetabolicGrid({ chronological }: Props) {
   const toneTmb = dTmb != null ? inbodyDeltaTone("tmb", dTmb, 1) : "neutral"
   const toneWater = dWater != null ? inbodyDeltaTone("agua_corporal", dWater) : "neutral"
 
+  const cardStyle = { background: "var(--ft-card)", border: "1px solid var(--ft-border)" }
+
   return (
-    <section className="px-4 space-y-3">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Metabolismo e hidratación</h2>
+    <section className="px-3.5 space-y-2">
+      <h2
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--ft-sub)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
+        Metabolismo e hidratación
+      </h2>
       <div className="grid grid-cols-2 gap-2">
-        <div className="bg-gray-800 rounded-xl p-3 flex flex-col gap-1">
-          <span className="text-xs text-gray-500 font-medium">TMB</span>
+        <div className="rounded-2xl p-3 flex flex-col gap-1" style={cardStyle}>
+          <span style={{ fontSize: 11, color: "var(--ft-sub)", fontWeight: 500 }}>TMB</span>
           <div className="flex items-start justify-between gap-1">
             <div className="flex items-baseline gap-1 min-w-0">
-              <span className="text-xl font-bold text-white tabular-nums">
+              <span className="text-xl font-bold tabular-nums" style={{ color: "var(--ft-text)" }}>
                 {tmb != null ? formatDecimal(tmb, 0) : "—"}
               </span>
-              <span className="text-xs text-gray-500">kcal/día</span>
+              <span style={{ fontSize: 11, color: "var(--ft-sub)" }}>kcal/día</span>
             </div>
             <InbodyMiniSparkline values={pick(chronological, "tmb")} color={TMB_COLOR} />
           </div>
@@ -59,14 +71,14 @@ export default function InbodyMetabolicGrid({ chronological }: Props) {
             </span>
           )}
         </div>
-        <div className="bg-gray-800 rounded-xl p-3 flex flex-col gap-1">
-          <span className="text-xs text-gray-500 font-medium">Agua corporal</span>
+        <div className="rounded-2xl p-3 flex flex-col gap-1" style={cardStyle}>
+          <span style={{ fontSize: 11, color: "var(--ft-sub)", fontWeight: 500 }}>Agua corporal</span>
           <div className="flex items-start justify-between gap-1">
             <div className="flex items-baseline gap-1 min-w-0">
-              <span className="text-xl font-bold text-white tabular-nums">
+              <span className="text-xl font-bold tabular-nums" style={{ color: "var(--ft-text)" }}>
                 {water != null ? formatDecimal(water, 2) : "—"}
               </span>
-              <span className="text-xs text-gray-500">L</span>
+              <span style={{ fontSize: 11, color: "var(--ft-sub)" }}>L</span>
             </div>
             <InbodyMiniSparkline values={pick(chronological, "agua_corporal")} color={WATER_COLOR} />
           </div>

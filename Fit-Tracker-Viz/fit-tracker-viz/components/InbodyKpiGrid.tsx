@@ -7,7 +7,7 @@ import {
 } from "@/lib/utils"
 import type { InbodyMeasurement } from "@/types"
 
-const MUSCLE = "#1D9E75"
+const MUSCLE = "#22C55E"
 
 interface Props {
   chronological: InbodyMeasurement[]
@@ -50,14 +50,31 @@ function KpiTile({
   const toneFirst = dFirst != null ? inbodyDeltaTone(field, dFirst, decimals === 0 ? 0.5 : 0.05) : "neutral"
 
   return (
-    <div className="bg-gray-800 rounded-xl p-3 flex flex-col gap-1 min-h-[7.5rem]">
-      <span className="text-xs text-gray-500 font-medium">{label}</span>
+    <div
+      className="rounded-2xl p-3 flex flex-col gap-1 min-h-[7.5rem]"
+      style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+    >
+      <span
+        style={{
+          fontSize: 9,
+          color: "var(--ft-sub)",
+          letterSpacing: "0.05em",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </span>
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-baseline gap-1 min-w-0">
-          <span className="text-xl font-bold text-white tabular-nums truncate">
+          <span
+            className="font-bold tabular-nums truncate"
+            style={{ fontSize: 20, color: "var(--ft-text)" }}
+          >
             {current != null ? formatDecimal(current, decimals) : "—"}
           </span>
-          {unit && <span className="text-xs text-gray-500 shrink-0">{unit}</span>}
+          {unit && (
+            <span style={{ fontSize: 9, color: "var(--ft-sub)", flexShrink: 0 }}>{unit}</span>
+          )}
         </div>
         <InbodyMiniSparkline values={series} color={MUSCLE} />
       </div>
@@ -67,7 +84,7 @@ function KpiTile({
         </span>
       )}
       {dFirst != null && hasMultipleMeasurements && (
-        <span className="text-[11px] text-gray-600 tabular-nums">
+        <span className="tabular-nums" style={{ fontSize: 11, color: "var(--ft-sub)" }}>
           vs primera:{" "}
           <span style={{ color: inbodyDeltaColor(toneFirst) }}>{formatSignedDelta(dFirst, unit)}</span>
         </span>
@@ -93,8 +110,18 @@ export default function InbodyKpiGrid({ chronological }: Props) {
   const hasMultipleMeasurements = rows.length > 1
 
   return (
-    <section className="px-4 space-y-3">
-      <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Composición corporal</h2>
+    <section className="px-3.5 space-y-2.5">
+      <h2
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          color: "var(--ft-sub)",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+        }}
+      >
+        Composición corporal
+      </h2>
       <div className="grid grid-cols-2 gap-2">
         <KpiTile
           label="Peso"

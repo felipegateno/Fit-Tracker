@@ -1,6 +1,4 @@
 import { formatNum, secondsToHM } from "@/lib/utils"
-import { formatDistanceToNow } from "date-fns"
-import { es } from "date-fns/locale"
 import type {
   GarminDailyHealth,
   GarminSleep,
@@ -19,25 +17,12 @@ interface Props {
   rangeLabel: string | null
 }
 
-function KpiCard({ label, value, unit, sub }: { label: string; value: string; unit?: string; sub?: string }) {
-  return (
-    <div className="bg-gray-900 rounded-xl p-4 flex flex-col gap-1">
-      <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">{label}</span>
-      <div className="flex items-baseline gap-1">
-        <span className="text-2xl font-bold text-white">{value}</span>
-        {unit && <span className="text-sm text-gray-400">{unit}</span>}
-      </div>
-      {sub && <span className="text-xs text-gray-500">{sub}</span>}
-    </div>
-  )
-}
-
-/** Dias con datos de Garmin (pasos o calorias quemadas > 0). */
+/** Dias con datos de Garmin */
 function daysWithHealthData(series: DashboardDayPoint[]): DashboardDayPoint[] {
   return series.filter((d) => d.total_steps > 0 || d.quemadas > 0)
 }
 
-/** Dias con datos de nutricion (consumidas > 0). */
+/** Dias con datos de nutricion */
 function daysWithNutritionData(series: DashboardDayPoint[]): DashboardDayPoint[] {
   return series.filter((d) => d.consumidas > 0)
 }
@@ -67,6 +52,65 @@ function meanQuemadas(series: DashboardDayPoint[]): number {
   return Math.round(valid.reduce((s, d) => s + d.quemadas, 0) / valid.length)
 }
 
+/** SVG ring progress indicator */
+function Ring({
+  size = 100,
+  sw = 9,
+  pct,
+  color,
+  children,
+}: {
+  size?: number
+  sw?: number
+  pct: number
+  color: string
+  children?: React.ReactNode
+}) {
+  const r = (size - sw) / 2
+  const c = 2 * Math.PI * r
+  const dash = (Math.min(pct, 100) / 100) * c
+  return (
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <svg
+        width={size}
+        height={size}
+        style={{ transform: "rotate(-90deg)", display: "block" }}
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke="rgba(255,255,255,0.06)"
+          strokeWidth={sw}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={color}
+          strokeWidth={sw}
+          strokeDasharray={`${dash} ${c}`}
+          strokeLinecap="round"
+        />
+      </svg>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export default function KpiGrid({
   totals,
   goals,
@@ -77,154 +121,255 @@ export default function KpiGrid({
   rangeLabel,
 }: Props) {
   const meta = goals?.calories_goal ?? 2000
-
   const singleDay = numDays === 1
+
   const consumidas = singleDay ? Math.round(totals.total_calories) : meanConsumidas(daySeries)
-  const quemadas = singleDay ? health?.total_calories ?? null : meanQuemadas(daySeries)
-  const deficit = quemadas != null ? consumidas - quemadas : null
+  const quemadas = singleDay ? (health?.total_calories ?? null) : meanQuemadas(daySeries)
+  const balance = quemadas != null ? consumidas - quemadas : null
 
-  const stepsValue = singleDay
-    ? health?.total_steps != null
-      ? formatNum(health.total_steps)
-      : "—"
-    : formatNum(meanSteps(daySeries))
+  const stepCount = singleDay ? (health?.total_steps ?? 0) : meanSteps(daySeries)
+  const stepGoal = singleDay ? (health?.step_goal ?? 10000) : 10000
+  const stepsPct = stepGoal > 0 ? (stepCount / stepGoal) * 100 : 0
 
-  const stepsSub = singleDay
-    ? health?.step_goal
-      ? `meta ${formatNum(health.step_goal)}`
-      : undefined
-    : rangeLabel
-      ? rangeLabel
-      : undefined
+  const sleepSec = singleDay ? (sleep?.total_sleep_seconds ?? null) : meanSleepSeconds(daySeries)
+  const sleepLabel = sleepSec != null ? secondsToHM(sleepSec) : "—"
+  const sleepScore = singleDay ? (sleep?.sleep_score ?? null) : null
 
-  const avgSleepSec = !singleDay ? meanSleepSeconds(daySeries) : null
-  const sleepHours = singleDay
-    ? sleep?.total_sleep_seconds
-      ? secondsToHM(sleep.total_sleep_seconds)
-      : "—"
-    : avgSleepSec != null
-      ? secondsToHM(avgSleepSec)
-      : "—"
-
-  const sleepSub = singleDay
-    ? sleep?.sleep_score != null
-      ? `score ${sleep.sleep_score}`
-      : undefined
-    : rangeLabel
-      ? rangeLabel
-      : undefined
-
-  const balanceSub = rangeLabel ?? undefined
+  // sleep phase seconds (single-day only)
+  const deepSec = sleep?.deep_sleep_seconds ?? 0
+  const remSec = sleep?.rem_sleep_seconds ?? 0
+  const lightSec = sleep?.light_sleep_seconds ?? 0
+  const totalPhaseSec = deepSec + remSec + lightSec
+  const hasPhases = singleDay && totalPhaseSec > 0
 
   const consumidasPct = meta > 0 ? (consumidas / meta) * 100 : 0
-  const consumidasOver = consumidasPct > 100
-  const barMax = Math.max(consumidasPct, 100)
-  const consumidasNormalW = (Math.min(consumidasPct, 100) / barMax) * 100
-  const consumidasExcessW = consumidasOver ? ((consumidasPct - 100) / barMax) * 100 : 0
-  const consumidasMarkerLeft = (100 / barMax) * 100
+  const accentColor = "var(--ft-accent)"
+  const ringColor =
+    consumidasPct > 110 ? "var(--ft-amber)" : accentColor
 
   return (
-    <section className="px-4 space-y-3">
-      <div className="bg-gray-900 rounded-xl p-4 space-y-3">
-        <div className="flex justify-between items-center">
-          <span className="text-xs text-gray-400 font-medium uppercase tracking-wide">Balance energético</span>
-          {deficit != null && (
-            <span className={`text-sm font-semibold ${deficit < 0 ? "text-emerald-400" : "text-rose-400"}`}>
-              {deficit < 0 ? `−${formatNum(Math.abs(deficit))}` : `+${formatNum(deficit)}`} kcal
-            </span>
-          )}
-        </div>
-        {balanceSub && <span className="text-xs text-gray-500 block -mt-1">{balanceSub}</span>}
+    <section className="px-3.5 space-y-2.5">
+      {/* ── Calorie ring card ── */}
+      <div
+        className="rounded-2xl p-4"
+        style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+      >
+        {rangeLabel && (
+          <div className="text-xs mb-3" style={{ color: "var(--ft-sub)" }}>
+            {rangeLabel}
+          </div>
+        )}
+        <div className="flex items-center gap-4">
+          <Ring size={100} sw={9} pct={consumidasPct} color={ringColor}>
+            <div style={{ textAlign: "center", lineHeight: 1 }}>
+              <div
+                className="font-bold"
+                style={{ fontSize: 17, color: "var(--ft-text)" }}
+              >
+                {(consumidas / 1000).toFixed(1)}k
+              </div>
+              <div
+                style={{
+                  fontSize: 9,
+                  color: "var(--ft-sub)",
+                  letterSpacing: "0.05em",
+                  marginTop: 2,
+                }}
+              >
+                KCAL
+              </div>
+            </div>
+          </Ring>
 
-        {/* Consumidas / Meta bar (merged) */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-gray-400">Consumidas / Meta</span>
-            <span className="text-gray-300 font-medium">
-              {formatNum(consumidas)} / {formatNum(meta)} kcal
+          <div style={{ flex: 1 }}>
+            <div style={{ marginBottom: 10 }}>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: "var(--ft-sub)",
+                  letterSpacing: "0.06em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Consumidas
+              </div>
+              <div
+                className="font-bold"
+                style={{ fontSize: 22, color: "var(--ft-text)", lineHeight: 1.1 }}
+              >
+                {formatNum(consumidas)}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--ft-sub)" }}>
+                meta {formatNum(meta)} kcal
+              </div>
+            </div>
+            <div
+              style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 10 }}
+            />
+            <div className="flex justify-between">
+              <div>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "var(--ft-sub)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Quemadas
+                </div>
+                <div
+                  className="font-semibold"
+                  style={{ fontSize: 16, color: "var(--ft-text)" }}
+                >
+                  {quemadas != null ? formatNum(quemadas) : "—"}
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: "var(--ft-sub)",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Balance
+                </div>
+                <div
+                  className="font-semibold"
+                  style={{
+                    fontSize: 16,
+                    color:
+                      balance == null
+                        ? "var(--ft-sub2)"
+                        : balance <= 0
+                          ? "var(--ft-green)"
+                          : "var(--ft-red)",
+                  }}
+                >
+                  {balance == null
+                    ? "—"
+                    : `${balance > 0 ? "+" : ""}${formatNum(balance)}`}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Steps + Sleep row ── */}
+      <div className="grid grid-cols-2 gap-2.5">
+        {/* Steps */}
+        <div
+          className="rounded-2xl p-3.5"
+          style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              color: "var(--ft-sub)",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              marginBottom: 10,
+            }}
+          >
+            Pasos
+          </div>
+          <Ring size={74} sw={7} pct={stepsPct} color={stepsPct >= 100 ? "var(--ft-green)" : accentColor}>
+            <div
+              className="font-bold"
+              style={{ fontSize: 13, color: "var(--ft-text)" }}
+            >
+              {stepCount > 0 ? `${(stepCount / 1000).toFixed(1)}k` : "—"}
+            </div>
+          </Ring>
+          <div style={{ marginTop: 8, fontSize: 11, color: "var(--ft-sub)" }}>
+            meta {(stepGoal / 1000).toFixed(0)}k ·{" "}
+            <span
+              style={{
+                color: stepsPct >= 100 ? "var(--ft-green)" : "var(--ft-sub2)",
+                fontWeight: 600,
+              }}
+            >
+              {Math.round(stepsPct)}%
             </span>
           </div>
-          <div className="relative pt-0.5">
-            <div className="relative h-2.5 bg-gray-800 rounded-full overflow-hidden w-full flex">
-              <div
-                className={`h-full shrink-0 ${consumidasOver ? "rounded-l-full" : "rounded-full"}`}
-                style={{ width: `${consumidasNormalW}%`, backgroundColor: "#5DCAA5" }}
-              />
-              {consumidasOver && (
-                <div
-                  className="h-full rounded-r-full shrink-0"
-                  style={{ width: `${consumidasExcessW}%`, backgroundColor: "#f97316" }}
-                />
-              )}
-            </div>
-            {consumidasOver && (
-              <div
-                className="absolute top-0 bottom-0 w-0.5 bg-white z-10 pointer-events-none opacity-90 rounded-full"
-                style={{ left: `${consumidasMarkerLeft}%`, transform: "translateX(-50%)" }}
-                aria-hidden
-              />
+        </div>
+
+        {/* Sleep */}
+        <div
+          className="rounded-2xl p-3.5"
+          style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              color: "var(--ft-sub)",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              marginBottom: 8,
+            }}
+          >
+            Sueño
+          </div>
+          <div
+            className="font-bold"
+            style={{ fontSize: 26, color: "var(--ft-text)", lineHeight: 1 }}
+          >
+            {sleepLabel.includes("h") ? (
+              <>
+                {sleepLabel.split("h")[0]}h
+                <span style={{ fontSize: 16 }}>
+                  {" "}
+                  {sleepLabel.split("h")[1]?.trim() || ""}
+                </span>
+              </>
+            ) : (
+              sleepLabel
             )}
           </div>
+          {hasPhases && (
+            <>
+              <div
+                style={{
+                  marginTop: 10,
+                  height: 6,
+                  borderRadius: 3,
+                  overflow: "hidden",
+                  display: "flex",
+                  gap: 1,
+                }}
+              >
+                <div style={{ flex: deepSec, background: "#7C3AED" }} />
+                <div style={{ flex: remSec, background: "var(--ft-accent)" }} />
+                <div style={{ flex: lightSec, background: "var(--ft-sub)" }} />
+              </div>
+              <div
+                className="flex gap-1.5 mt-1"
+                style={{ fontSize: 9 }}
+              >
+                <span style={{ color: "#A78BFA" }}>Deep</span>
+                <span style={{ color: "var(--ft-accent)" }}>REM</span>
+                <span style={{ color: "var(--ft-sub)" }}>Light</span>
+              </div>
+            </>
+          )}
+          {sleepScore != null && (
+            <div style={{ marginTop: 6, fontSize: 11, color: "var(--ft-sub)" }}>
+              Score{" "}
+              <span
+                style={{
+                  color: sleepScore >= 75 ? "var(--ft-green)" : "var(--ft-amber)",
+                  fontWeight: 600,
+                }}
+              >
+                {sleepScore}
+              </span>
+            </div>
+          )}
         </div>
-
-        {/* Quemadas bar */}
-        <BalanceBar label="Quemadas" value={quemadas ?? 0} max={meta} color="#D85A30" />
       </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <KpiCard label="Pasos" value={stepsValue} sub={stepsSub} />
-        <KpiCard label="Sueño" value={sleepHours} sub={sleepSub} />
-      </div>
-
-      {singleDay && <GarminSyncBadge lastSync={health?.garmin_last_sync ?? null} />}
     </section>
-  )
-}
-
-function GarminSyncBadge({ lastSync }: { lastSync: string | null }) {
-  if (!lastSync) return null
-
-  const syncDate = new Date(lastSync)
-  const ageMs = Date.now() - syncDate.getTime()
-  const ageMinutes = ageMs / 60_000
-
-  let dotColor: string
-  let label: string
-  if (ageMinutes < 60) {
-    dotColor = "bg-emerald-400"
-    label = "Garmin actualizado"
-  } else if (ageMinutes < 180) {
-    dotColor = "bg-yellow-400"
-    label = "Garmin desactualizado"
-  } else {
-    dotColor = "bg-rose-400"
-    label = "Garmin sin sync"
-  }
-
-  const ago = formatDistanceToNow(syncDate, { addSuffix: true, locale: es })
-
-  return (
-    <div className="flex items-center gap-1.5 text-xs text-gray-500">
-      <span className={`inline-block w-1.5 h-1.5 rounded-full ${dotColor}`} />
-      <span>{label} · {ago}</span>
-    </div>
-  )
-}
-
-function BalanceBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = Math.min((value / max) * 100, 100)
-  return (
-    <div className="space-y-1">
-      <div className="flex justify-between text-xs">
-        <span className="text-gray-400">{label}</span>
-        <span className="text-gray-300 font-medium">{formatNum(value)} kcal</span>
-      </div>
-      <div className="h-2.5 bg-gray-800 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${pct}%`, backgroundColor: color }}
-        />
-      </div>
-    </div>
   )
 }

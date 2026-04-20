@@ -114,10 +114,32 @@ export default function WorkoutCalendar({
     ? activities.filter((a) => a.date === selectedDay)
     : []
 
+  const navBtnStyle = {
+    background: "rgba(255,255,255,0.07)",
+    border: "none",
+    borderRadius: 8,
+    width: 28,
+    height: 28,
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    cursor: "pointer",
+    color: "var(--ft-sub2)",
+  }
+
   return (
-    <section className="px-4 space-y-3 relative">
+    <section className="px-3.5 space-y-2 relative">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide flex-1 min-w-0">
+        <h2
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "var(--ft-sub)",
+            textTransform: "uppercase",
+            letterSpacing: "0.08em",
+            flex: 1,
+          }}
+        >
           {weekMode
             ? "Entrenamientos — semana"
             : `Entrenamientos — ${format(monthStart, "MMMM yyyy", { locale: es })}`}
@@ -126,37 +148,41 @@ export default function WorkoutCalendar({
           <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
+              style={navBtnStyle}
               onClick={() => setViewMonth(format(subMonths(monthStart, 1), "yyyy-MM"))}
-              className="p-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700"
               aria-label="Mes anterior"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
+              style={navBtnStyle}
               onClick={() => setViewMonth(format(addMonths(monthStart, 1), "yyyy-MM"))}
-              className="p-1.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700"
               aria-label="Mes siguiente"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
       </div>
-      <div className="bg-gray-900 rounded-xl p-4 space-y-3">
-        <div
-          className={`grid gap-1 ${weekMode ? "grid-cols-7" : "grid-cols-7"}`}
-        >
+
+      <div
+        className="rounded-2xl p-3 space-y-2.5"
+        style={{ background: "var(--ft-card)", border: "1px solid var(--ft-border)" }}
+      >
+        <div className="grid grid-cols-7 gap-1">
           {WEEKDAYS.map((d) => (
-            <div key={d} className="text-center text-xs text-gray-500 font-medium">
+            <div
+              key={d}
+              className="text-center font-medium"
+              style={{ fontSize: 9, color: "var(--ft-sub)", paddingBottom: 4 }}
+            >
               {d}
             </div>
           ))}
         </div>
 
-        <div
-          className={`grid gap-1 ${weekMode ? "grid-cols-7" : "grid-cols-7"}`}
-        >
+        <div className="grid grid-cols-7 gap-1">
           {!weekMode &&
             Array.from({ length: firstDow }).map((_, i) => (
               <div key={`empty-${i}`} />
@@ -173,26 +199,38 @@ export default function WorkoutCalendar({
                 type="button"
                 key={iso}
                 onClick={() => hasActivity && setSelectedDay(iso)}
-                className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs relative ${
-                  isToday ? "ring-2 ring-indigo-500" : ""
-                } ${hasActivity ? "cursor-pointer" : "cursor-default"}`}
-                style={
-                  primaryColor
-                    ? { backgroundColor: primaryColor + "66" }
-                    : { backgroundColor: "#1f2937" }
-                }
+                className="aspect-square flex flex-col items-center justify-center rounded-md relative"
+                style={{
+                  background: primaryColor ? `${primaryColor}18` : "rgba(255,255,255,0.03)",
+                  border: `1px solid ${primaryColor ? `${primaryColor}44` : "var(--ft-border)"}`,
+                  cursor: hasActivity ? "pointer" : "default",
+                  outline: isToday ? "2px solid var(--ft-accent)" : "none",
+                  outlineOffset: 1,
+                }}
                 title={cats.map((c) => CATEGORY_LABEL[c]).join(", ")}
               >
-                <span className={`font-medium ${hasActivity ? "text-white" : "text-gray-600"}`}>
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: hasActivity ? 600 : 400,
+                    color: hasActivity ? primaryColor ?? "var(--ft-text)" : "var(--ft-sub)",
+                    lineHeight: 1,
+                  }}
+                >
                   {format(day, "d")}
                 </span>
-                {cats.length > 1 && (
+                {cats.length > 0 && (
                   <div className="flex gap-0.5 mt-0.5">
                     {cats.slice(0, 3).map((c) => (
                       <span
                         key={c}
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: ACTIVITY_COLOR_MAP[c] }}
+                        className="rounded-full"
+                        style={{
+                          width: 3.5,
+                          height: 3.5,
+                          backgroundColor: ACTIVITY_COLOR_MAP[c],
+                          display: "block",
+                        }}
                       />
                     ))}
                   </div>
@@ -205,61 +243,93 @@ export default function WorkoutCalendar({
         {usedCategories.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             {usedCategories.map((cat) => (
-              <span key={cat} className="flex items-center gap-1.5 text-xs text-gray-400">
+              <span
+                key={cat}
+                className="flex items-center gap-1.5"
+                style={{ fontSize: 10, color: "var(--ft-sub2)" }}
+              >
                 <span
-                  className="w-2.5 h-2.5 rounded-sm inline-block"
-                  style={{ backgroundColor: ACTIVITY_COLOR_MAP[cat] }}
+                  className="rounded-full inline-block"
+                  style={{ width: 6, height: 6, backgroundColor: ACTIVITY_COLOR_MAP[cat] }}
                 />
                 {CATEGORY_LABEL[cat]}
               </span>
             ))}
-            <span className="flex items-center gap-1.5 text-xs text-gray-400">
-              <span className="w-2.5 h-2.5 rounded-sm inline-block bg-gray-800" />
-              Descanso
-            </span>
           </div>
         )}
       </div>
 
       {selectedDay && (
         <div
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.6)" }}
           role="dialog"
           aria-modal="true"
           onClick={() => setSelectedDay(null)}
         >
           <div
-            className="w-full max-w-sm rounded-xl border border-gray-700 bg-gray-900 shadow-xl max-h-[70vh] overflow-y-auto"
+            className="w-full max-w-sm rounded-2xl shadow-xl max-h-[70vh] overflow-y-auto"
+            style={{
+              background: "var(--ft-card)",
+              border: "1px solid var(--ft-border)",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
-              <span className="text-sm font-medium text-white">
+            <div
+              className="flex items-center justify-between px-4 py-3"
+              style={{ borderBottom: "1px solid var(--ft-border)" }}
+            >
+              <span
+                className="font-semibold capitalize"
+                style={{ fontSize: 14, color: "var(--ft-text)" }}
+              >
                 {format(parseISO(selectedDay + "T12:00:00"), "EEEE d MMM", { locale: es })}
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedDay(null)}
-                className="p-1 rounded-lg text-gray-400 hover:bg-gray-800"
+                className="p-1 rounded-lg"
+                style={{
+                  background: "rgba(255,255,255,0.07)",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "var(--ft-sub)",
+                }}
                 aria-label="Cerrar"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
-            <ul className="divide-y divide-gray-800 px-3 py-2">
-              {dayActs.map((act) => {
+            <ul className="px-4 py-2">
+              {dayActs.map((act, idx) => {
                 const cat = GARMIN_TYPE_TO_CATEGORY[act.activity_type] ?? "gimnasio"
                 const col = ACTIVITY_COLOR_MAP[cat]
                 return (
-                  <li key={act.id} className="py-2.5 flex flex-col gap-0.5">
+                  <li
+                    key={act.id}
+                    className="py-2.5 flex flex-col gap-0.5"
+                    style={{
+                      borderTop: idx > 0 ? "1px solid var(--ft-border)" : "none",
+                    }}
+                  >
                     <div className="flex items-center gap-2">
                       <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: col }}
+                        className="rounded-full shrink-0"
+                        style={{ width: 8, height: 8, backgroundColor: col, display: "block" }}
                       />
-                      <span className="text-sm text-white font-medium">{act.name}</span>
+                      <span
+                        className="font-semibold"
+                        style={{ fontSize: 14, color: "var(--ft-text)" }}
+                      >
+                        {act.name}
+                      </span>
                     </div>
-                    <span className="text-xs text-gray-500">{CATEGORY_LABEL[cat]}</span>
-                    <span className="text-sm text-indigo-300">{activityDetailLine(act)}</span>
+                    <span style={{ fontSize: 11, color: "var(--ft-sub)" }}>
+                      {CATEGORY_LABEL[cat]}
+                    </span>
+                    <span style={{ fontSize: 13, color: col }}>
+                      {activityDetailLine(act)}
+                    </span>
                   </li>
                 )
               })}

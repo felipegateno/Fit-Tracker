@@ -24,15 +24,17 @@ export default function InbodyPanel({ measurements }: Props) {
   if (!latest || !first) {
     return (
       <div className="px-4 pt-6 pb-10">
-        <p className="text-sm text-gray-400">No hay mediciones InBody. Agrega filas en Supabase (tabla `inbody`).</p>
+        <p className="text-sm" style={{ color: "var(--ft-sub)" }}>
+          No hay mediciones InBody. Agrega filas en Supabase (tabla `inbody`).
+        </p>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6 pt-2">
-      <header className="px-4">
-        <p className="text-xs text-gray-500">
+    <div className="space-y-4 pt-2">
+      <header className="px-3.5">
+        <p style={{ fontSize: 11, color: "var(--ft-sub)" }}>
           {formatShortDate(first.fecha)} — {formatShortDate(latest.fecha)} · {chronological.length}{" "}
           {chronological.length === 1 ? "medición" : "mediciones"}
         </p>

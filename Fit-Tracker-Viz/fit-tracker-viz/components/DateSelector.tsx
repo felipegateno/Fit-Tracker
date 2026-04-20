@@ -50,7 +50,7 @@ function DateSelectorInner() {
 
   if (mode === "daily") {
     centerLabel = (
-      <label className="flex items-center gap-1 text-sm text-gray-200 cursor-pointer">
+      <label className="flex items-center gap-1 cursor-pointer" style={{ color: "var(--ft-sub2)", fontSize: 13 }}>
         <input
           type="date"
           value={currentDate}
@@ -71,7 +71,7 @@ function DateSelectorInner() {
   } else if (mode === "weekly") {
     const { startDate, endDate } = resolveDashboardRange(currentDate, "weekly")
     centerLabel = (
-      <span className="text-sm text-gray-200 tabular-nums text-center px-1">
+      <span className="tabular-nums text-center px-1" style={{ color: "var(--ft-sub2)", fontSize: 13 }}>
         {formatShortDate(startDate)} — {formatShortDate(endDate)}
       </span>
     )
@@ -85,7 +85,9 @@ function DateSelectorInner() {
   } else {
     const monthLabel = format(base, "MMMM yyyy", { locale: es })
     centerLabel = (
-      <span className="text-sm text-gray-200 capitalize text-center px-1">{monthLabel}</span>
+      <span className="capitalize text-center px-1" style={{ color: "var(--ft-sub2)", fontSize: 13 }}>
+        {monthLabel}
+      </span>
     )
     onPrev = () => navigate(format(subMonths(base, 1), "yyyy-MM-dd"))
     const nextMonthStart = format(addMonths(startOfMonth(base), 1), "yyyy-MM-dd")
@@ -95,33 +97,63 @@ function DateSelectorInner() {
     }
   }
 
+  const btnStyle = {
+    background: "rgba(255,255,255,0.07)",
+    border: "none",
+    borderRadius: 8,
+    width: 32,
+    height: 32,
+    display: "flex" as const,
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+    cursor: "pointer",
+    color: "var(--ft-sub2)",
+    flexShrink: 0,
+  }
+
   return (
-    <div className="flex items-center justify-center gap-2 px-4 py-2 border-b border-gray-800/80 bg-gray-950/95 max-w-[480px] mx-auto">
+    <div
+      className="flex items-center justify-center gap-2 px-4 py-2.5 border-b"
+      style={{
+        borderColor: "var(--ft-border)",
+        background: "var(--ft-nav)",
+      }}
+    >
       <button
         type="button"
         onClick={onPrev}
         disabled={!canGoPrev}
-        className="p-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 disabled:opacity-30"
+        style={{ ...btnStyle, opacity: canGoPrev ? 1 : 0.3 }}
         aria-label="Anterior"
       >
-        <ChevronLeft className="w-4 h-4" />
+        <ChevronLeft className="w-3.5 h-3.5" />
       </button>
-      <div className="flex-1 flex justify-center min-h-[2.25rem] items-center">{centerLabel}</div>
+      <div
+        className="flex-1 flex justify-center items-center"
+        style={{ fontSize: 13, color: "var(--ft-sub2)", minHeight: "2rem" }}
+      >
+        {centerLabel}
+      </div>
       <button
         type="button"
         onClick={onNext}
         disabled={!canGoNext}
-        className="p-2 rounded-lg bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700 disabled:opacity-30 disabled:pointer-events-none"
+        style={{ ...btnStyle, opacity: canGoNext ? 1 : 0.3 }}
         aria-label="Siguiente"
       >
-        <ChevronRight className="w-4 h-4" />
+        <ChevronRight className="w-3.5 h-3.5" />
       </button>
     </div>
   )
 }
 
 function DateSelectorFallback() {
-  return <div className="h-12 border-b border-gray-800 max-w-[480px] mx-auto" />
+  return (
+    <div
+      className="h-12 border-b"
+      style={{ borderColor: "var(--ft-border)", background: "var(--ft-nav)" }}
+    />
+  )
 }
 
 export default function DateSelector() {
