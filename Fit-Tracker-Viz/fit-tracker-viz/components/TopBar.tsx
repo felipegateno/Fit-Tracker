@@ -12,7 +12,7 @@ interface FtUser {
 }
 
 const TAB_TITLES: Record<string, string> = {
-  daily: "Hoy",
+  daily: "Diario",
   weekly: "Semana",
   monthly: "Mes",
   inbody: "InBody",

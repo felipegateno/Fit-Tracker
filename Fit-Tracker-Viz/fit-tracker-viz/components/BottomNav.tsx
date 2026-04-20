@@ -8,7 +8,7 @@ import type { DashboardMode } from "@/types"
 const TABS: { id: DashboardMode; label: string; icon: React.ReactNode }[] = [
   {
     id: "daily",
-    label: "Hoy",
+    label: "Diario",
     icon: (
       <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
         <circle cx="10" cy="10" r="3" fill="currentColor" />
@@ -57,7 +57,7 @@ export default function BottomNav() {
   const params = useSearchParams()
   const mode = parseDashboardMode(params.get("mode"))
   const currentDate =
-    params.get("date") || format(subDays(new Date(), 1), "yyyy-MM-dd")
+    params.get("date") || format(new Date(), "yyyy-MM-dd")
 
   const navigate = (next: DashboardMode) => {
     const p = new URLSearchParams()

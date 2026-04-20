@@ -26,7 +26,7 @@ function DateSelectorInner() {
   const router = useRouter()
   const params = useSearchParams()
   const todayStr = today()
-  const defaultDate = format(subDays(parseISO(todayStr + "T12:00:00"), 1), "yyyy-MM-dd")
+  const defaultDate = todayStr
   const currentDate = params.get("date") || defaultDate
   const mode = parseDashboardMode(params.get("mode"))
 

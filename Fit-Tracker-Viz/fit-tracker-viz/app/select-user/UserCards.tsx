@@ -1,6 +1,5 @@
 "use client"
 
-import { useRouter } from "next/navigation"
 
 const COLORS = ["#4F8EF7", "#22C55E", "#A78BFA", "#F59E0B", "#EF4444", "#EC4899"]
 
@@ -11,8 +10,6 @@ interface User {
 }
 
 export default function UserCards({ users }: { users: User[] }) {
-  const router = useRouter()
-
   const handleSelect = (user: User, index: number) => {
     const name = user.first_name ?? user.username ?? user.id
     const color = COLORS[index % COLORS.length]
@@ -28,7 +25,7 @@ export default function UserCards({ users }: { users: User[] }) {
       // ignore
     }
 
-    router.push("/")
+    window.location.href = "/"
   }
 
   return (

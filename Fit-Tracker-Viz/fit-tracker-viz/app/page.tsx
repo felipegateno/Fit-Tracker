@@ -31,7 +31,7 @@ interface PageProps {
   searchParams: Promise<{ date?: string; mode?: string }>
 }
 
-export const revalidate = 120
+export const dynamic = "force-dynamic"
 
 /** Promedia solo dias que tengan datos reales (entry_count > 0). */
 function averageDailyTotals(rows: (DailyTotals | undefined)[]): DailyTotals {
@@ -248,7 +248,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
     )
   }
 
-  const anchorDate = params.date || format(subDays(new Date(), 1), "yyyy-MM-dd")
+  const anchorDate = params.date || format(new Date(), "yyyy-MM-dd")
   const range = resolveDashboardRange(anchorDate, mode)
 
   const data = await fetchDashboardData(mode, range, userId)
