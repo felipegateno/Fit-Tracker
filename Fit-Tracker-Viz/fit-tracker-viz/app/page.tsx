@@ -218,9 +218,13 @@ async function fetchDashboardData(mode: DashboardMode, range: DateRangeResolved,
   }
 }
 
-async function fetchInbodyMeasurements(): Promise<InbodyMeasurement[]> {
+async function fetchInbodyMeasurements(userId: string): Promise<InbodyMeasurement[]> {
   const db = createServerClient()
-  const { data, error } = await db.from("inbody").select("*").order("fecha", { ascending: false })
+  const { data, error } = await db
+    .from("inbody")
+    .select("*")
+    .eq("user_id", userId)
+    .order("fecha", { ascending: false })
   if (error) {
     console.error("inbody:", error.message)
     return []
@@ -240,7 +244,7 @@ export default async function DashboardPage({ searchParams }: PageProps) {
   const mode = parseDashboardMode(params.mode)
 
   if (mode === "inbody") {
-    const measurements = await fetchInbodyMeasurements()
+    const measurements = await fetchInbodyMeasurements(userId)
     return (
       <div className="space-y-4 pt-2 pb-6">
         <InbodyPanel measurements={measurements} />
